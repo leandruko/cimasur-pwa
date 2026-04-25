@@ -14,5 +14,5 @@ export interface Orden {
   estado: 'pendiente' | 'completado' | 'reclamo';
   created_at: string;
   last_sync_at?: string;
-  synced: 0 | 1; // 0: Solo en IndexedDB, 1: Sincronizado con Supabase
+  synced: 0 | 1; 
 }

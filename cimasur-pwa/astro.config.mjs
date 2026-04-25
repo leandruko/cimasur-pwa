@@ -1,20 +1,23 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
-import tailwind from '@astrojs/tailwind';
 import AstroPWA from '@vite-pwa/astro';
+import tailwindv4 from '@tailwindcss/vite'; // Importamos el plugin de Vite
+import node from '@astrojs/node';
 
 export default defineConfig({
+  // Necesitas un adaptador para usar 'server'
   output: 'server',
+  adapter: node({
+    mode: 'standalone',
+  }),
   integrations: [
-    react(),
-    tailwind(),
+    react(), 
+    // Eliminamos tailwind() de aquí
     AstroPWA({
       registerType: 'autoUpdate',
       injectRegister: 'script',
       workbox: {
-        // Cacheamos todos los recursos estáticos para modo offline
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Estrategia para la API de Supabase: Intenta red, si falla, usa caché
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.host.includes('supabase.co'),
@@ -23,7 +26,7 @@ export default defineConfig({
               cacheName: 'supabase-api-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 días
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
             },
           },
@@ -43,4 +46,8 @@ export default defineConfig({
       },
     }),
   ],
+  vite: {
+    // Tailwind v4 se configura aquí como plugin de Vite
+    plugins: [tailwindv4()],
+  },
 });
