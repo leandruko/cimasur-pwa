@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { LoginForm } from '../components/LoginForm';
+---
+
+<Layout title="Iniciar Sesión">
+  <main class="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+    <LoginForm client:load />
+  </main>
+</Layout>
