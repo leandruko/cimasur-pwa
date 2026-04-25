@@ -1,5 +1,30 @@
 import React from 'react';
 
+// Dentro de DashboardShell.tsx
+const NetworkStatus = () => {
+  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
+
+  React.useEffect(() => {
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-800">
+      <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 animate-pulse'}`} />
+      <span className="text-[10px] uppercase font-bold text-slate-400">
+        {isOnline ? 'Sistema Online' : 'Modo Offline'}
+      </span>
+    </div>
+  );
+};
+
+
 export const DashboardShell = ({ children, title }: { children: React.ReactNode, title: string }) => {
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100">
@@ -26,4 +51,7 @@ export const DashboardShell = ({ children, title }: { children: React.ReactNode,
       </main>
     </div>
   );
+
+
+
 };

@@ -1,35 +1,27 @@
 ---
-import '../styles/global.css';
 import { pwaInfo } from 'virtual:pwa-info';
+import { SyncManager } from '../components/SyncManager'; // Importante importar
+import '../styles/global.css';
 
 interface Props {
-	title: string;
+  title: string;
 }
 
 const { title } = Astro.props;
-
-
 ---
 
 <!doctype html>
-<html lang="es" class="bg-slate-950 text-slate-50">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<title>{title} | Cimasur</title>
-		{pwaInfo && <script src="/src/pwa.ts"></script>}
-	</head>
-	<body class="min-h-screen font-sans antialiased">
-		<slot />
-	</body>
-	
-</html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} | Cimasur</title>
+    {pwaInfo && <script src="/src/pwa.ts"></script>}
+  </head>
+  <body class="bg-slate-950 text-slate-50 min-h-screen">
+    
+    <SyncManager client:load />
 
-<style is:global>
-	/* Estilo industrial para scrollbars */
-	::-webkit-scrollbar { width: 8px; }
-	::-webkit-scrollbar-track { background: #0f172a; }
-	::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-	::-webkit-scrollbar-thumb:hover { background: #2563eb; }
-</style>
+    <slot />
+  </body>
+</html>

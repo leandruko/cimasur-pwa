@@ -2,22 +2,19 @@
 import Layout from '../../layouts/Layout.astro';
 import { DashboardShell } from '../../components/DashboardShell';
 import { OrdenesList } from '../../components/OrdenesList';
-
-// El middleware que creamos antes ya protege esta ruta
+import { AuthProvider } from '../../components/AuthProvider';
 ---
 
 <Layout title="Panel de Trazabilidad">
-  <DashboardShell title="Gestión de Órdenes" client:load>
-    <div class="mb-6 flex justify-between items-center">
-      <p class="text-slate-400">Bienvenido al sistema de control Cimasur.</p>
-      <a 
-        href="/dashboard/nueva-orden" 
-        class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition-all"
-      >
-        + Nueva Orden
-      </a>
-    </div>
-    
-    <OrdenesList client:load />
-  </DashboardShell>
+  <AuthProvider client:only="react">
+    <DashboardShell title="Gestión de Órdenes" client:load>
+      <div class="mb-6 flex justify-between items-center">
+        <p class="text-slate-400">Bienvenido al sistema de control Cimasur.</p>
+        <a href="/dashboard/nueva-orden" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold">
+          + Nueva Orden
+        </a>
+      </div>
+      <OrdenesList client:load />
+    </DashboardShell>
+  </AuthProvider>
 </Layout>
