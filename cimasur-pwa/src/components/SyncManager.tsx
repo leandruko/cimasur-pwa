@@ -2,35 +2,33 @@ import { useEffect } from 'react';
 import { db } from '../lib/db';
 import { supabase } from '../lib/supabase';
 
+const TABLES_TO_SYNC = ['bases', 'fabricaciones', 'etiquetados', 'almacenamientos', 'ventas', 'reclamos'];
+
 export const SyncManager = () => {
   useEffect(() => {
-    const syncSubida = async () => {
+    const syncData = async () => {
       if (!navigator.onLine) return;
 
-      const pendientes = await db.ordenes.where('dirty').equals(1).toArray();
-      
-      for (const orden of pendientes) {
-        // Separamos los campos de Dexie de los de Supabase
-        const { dirty, synced, ...datosParaSupabase } = orden;
+      for (const tableName of TABLES_TO_SYNC) {
+        // @ts-ignore - Acceso dinámico a tablas de Dexie
+        const pending = await db[tableName].where('dirty').equals(1).toArray();
+        
+        for (const item of pending) {
+          const { dirty, synced, ...payload } = item;
+          const { error } = await supabase.from(tableName).upsert(payload);
 
-        const { error } = await supabase
-          .from('ordenes')
-          .upsert(datosParaSupabase);
-
-        if (!error) {
-          await db.ordenes.update(orden.id, { dirty: 0, synced: 1 });
-          console.log(`Orden ${orden.id} sincronizada.`);
+          if (!error) {
+            // @ts-ignore
+            await db[tableName].update(item.id, { dirty: 0, synced: 1 });
+          }
         }
       }
     };
 
-    // Escuchar cambios de red
-    window.addEventListener('online', syncSubida);
-    // Ejecutar una vez al cargar por si ya estamos online
-    syncSubida();
-
-    return () => window.removeEventListener('online', syncSubida);
+    window.addEventListener('online', syncData);
+    syncData(); // Ejecución inicial
+    return () => window.removeEventListener('online', syncData);
   }, []);
 
-  return null; // Este componente no renderiza nada
+  return null;
 };

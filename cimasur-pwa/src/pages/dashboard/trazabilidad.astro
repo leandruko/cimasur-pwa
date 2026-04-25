@@ -1,0 +1,17 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { DashboardShell } from '../../components/DashboardShell';
+import { TrazabilidadSearcher } from '../../components/Trazabilidad/Searcher';
+import { AuthProvider } from '../../components/AuthProvider';
+---
+
+<Layout title="Buscador de Trazabilidad | Cimasur">
+  <AuthProvider client:only="react">
+    <DashboardShell title="Trazabilidad Total" client:load>
+      <div class="mb-10 text-center">
+        <p class="text-slate-400">Consulte el historial completo de un producto ingresando su código de lote único.</p>
+      </div>
+      <TrazabilidadSearcher client:load />
+    </DashboardShell>
+  </AuthProvider>
+</Layout>

@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { DashboardShell } from '../../components/DashboardShell';
+import { BaseForm } from '../../components/Bases/BaseForm';
+import { AuthProvider } from '../../components/AuthProvider';
+---
+
+<Layout title="Registro de Materia Prima">
+  <AuthProvider client:only="react">
+    <DashboardShell title="Ingreso de Bases" client:load>
+      <div class="max-w-4xl mx-auto">
+        <header class="mb-8">
+          <h2 class="text-2xl font-bold text-white">Nueva Materia Prima</h2>
+          <p class="text-slate-400">Complete los datos para generar el código de trazabilidad inicial.</p>
+        </header>
+        
+        <BaseForm client:load />
+      </div>
+    </DashboardShell>
+  </AuthProvider>
+</Layout>

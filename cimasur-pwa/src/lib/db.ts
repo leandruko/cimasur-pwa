@@ -1,24 +1,39 @@
 import Dexie, { type Table } from 'dexie';
-import type { Orden } from '../types/database';
 
-// Extendemos el tipo Orden para incluir meta-datos de sincronización local
-export interface LocalOrden extends Orden {
-  synced: 0 | 1; 
-  dirty: 0 | 1; // 1 si ha sido modificada localmente y no se ha subido
+// Interfaz genérica para manejo offline
+// Usamos 'synced' para saber si ya está en Supabase
+// Usamos 'dirty' para saber si hubo cambios locales pendientes de subir
+interface OfflineMeta {
+  synced: 0 | 1;
+  dirty: 0 | 1;
 }
 
 export class CimasurOfflineDB extends Dexie {
-  ordenes!: Table<LocalOrden>;
-  categorias!: Table<{ id: string; nombre: string }>;
+  // Definimos las tablas basadas en tu SQL
+  categorias!: Table<any>;
+  bases!: Table<any & OfflineMeta>;
+  fabricaciones!: Table<any & OfflineMeta>;
+  etiquetados!: Table<any & OfflineMeta>;
+  almacenamientos!: Table<any & OfflineMeta>;
+  ventas!: Table<any & OfflineMeta>;
+  reclamos!: Table<any & OfflineMeta>;
 
   constructor() {
     super('CimasurLocalStorage');
     
-    // Definimos los índices. 
-    // El id es el UUID de Supabase. indexedDB buscará por id y estado de sincronización.
-    this.version(1).stores({
-      ordenes: 'id, tecnico_id, estado, synced, dirty',
-      categorias: 'id, nombre'
+    /**
+     * IMPORTANTE:
+     * El primer campo es la Llave Primaria (id).
+     * Los demás son índices para búsquedas rápidas.
+     */
+    this.version(2).stores({
+      categorias: 'id, prefijo',
+      bases: 'id, codigo_base, tecnico_id, synced, dirty',
+      fabricaciones: 'id, codigo_lote, base_id, synced, dirty',
+      etiquetados: 'id, fabricacion_id, synced, dirty',
+      almacenamientos: 'id, fabricacion_id, synced, dirty',
+      ventas: 'id, fabricacion_id, synced, dirty',
+      reclamos: 'id, fabricacion_id, synced, dirty'
     });
   }
 }
