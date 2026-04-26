@@ -1,0 +1,34 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import DashboardShell from '../../../components/DashboardShell';
+import { AdminPanel } from '../../../components/Admin/AdminPanel';
+
+// Aquí podrías agregar lógica de servidor si quisieras restringir 
+// esta página solo a un correo de administrador específico
+---
+
+<Layout title="Panel de Administración | Cimasur">
+	<DashboardShell client:load>
+		<div class="py-6">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+				<h1 class="text-2xl font-semibold text-white mb-8">Panel de Control Maestro</h1>
+			</div>
+			
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+				<AdminPanel client:load />
+			</div>
+		</div>
+	</DashboardShell>
+</Layout>
+
+<style>
+	/* Optativo: Estilos adicionales para la transición de entrada */
+	main {
+		animation: fadeIn 0.5s ease-out;
+	}
+
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+</style>
