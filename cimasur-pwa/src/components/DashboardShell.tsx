@@ -31,10 +31,13 @@ export const DashboardShell = ({ children, title }: { children: React.ReactNode,
       {/* Sidebar Simple */}
       <aside className="w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col">
         <h2 className="text-2xl font-bold text-blue-500 mb-8">CIMASUR</h2>
-        <nav className="space-y-4 flex-1">
-          <a href="/dashboard" className="block p-2 hover:bg-slate-800 rounded transition-colors">Órdenes</a>
-          <a href="/reportes" className="block p-2 hover:bg-slate-800 rounded transition-colors">Reportes</a>
-        </nav>
+          <nav className="space-y-4">
+            <a href="/dashboard" className="block p-2 hover:bg-slate-800 rounded">Inicio</a>
+            <a href="/dashboard/bases" className="block p-2 hover:bg-slate-800 rounded">🧪 Bases</a>
+            {/* Opción de administrador */}
+            <div className="pt-4 mt-4 border-t border-slate-800 text-xs text-slate-500 uppercase font-bold">Admin</div>
+            <a href="/dashboard/admin/usuarios" className="block p-2 hover:bg-slate-800 rounded text-red-400">👤 Gestionar Usuarios</a>
+          </nav>
         <div className="text-xs text-slate-500 border-t border-slate-800 pt-4">
           Estado: <span className={navigator.onLine ? "text-green-500" : "text-amber-500"}>
             {navigator.onLine ? "● Online" : "○ Offline"}

@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { DashboardShell } from '../../components/DashboardShell';
-import { TrazabilidadSearcher } from '../../components/Trazabilidad/Searcher';
+import { BuscadorTrazabilidad } from '../../components/Trazabilidad/Searcher';
 import { AuthProvider } from '../../components/AuthProvider';
 ---
 
@@ -11,7 +11,7 @@ import { AuthProvider } from '../../components/AuthProvider';
       <div class="mb-10 text-center">
         <p class="text-slate-400">Consulte el historial completo de un producto ingresando su código de lote único.</p>
       </div>
-      <TrazabilidadSearcher client:load />
+      <BuscadorTrazabilidad client:load />
     </DashboardShell>
   </AuthProvider>
 </Layout>

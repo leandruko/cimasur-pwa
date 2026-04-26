@@ -1,90 +1,121 @@
 import React, { useState } from 'react';
 import { db } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { v4 as uuidv4 } from 'uuid';
 
 export const AlmacenForm = () => {
-  // Obtenemos fabricaciones para vincular el lote
+  // Obtenemos los lotes fabricados y los usuarios para los selectores
   const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
+  const usuarios = useLiveQuery(() => db.perfiles.toArray());
 
   const [formData, setFormData] = useState({
-    fabricacion_id: '',
-    bodega: '',
-    estante: '',
-    temperatura_control: '',
+    lote_id: '', // Relación 1:1 con Fabricacion.codigo_lote
+    ubicacion: '',
+    temperatura_verificada: '',
+    responsable_id: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const nuevoRegistro = {
-      id: uuidv4(),
-      ...formData,
-      temperatura_control: parseFloat(formData.temperatura_control),
+  if (!formData.lote_id || !formData.responsable_id) {
+    return alert("Debe seleccionar un lote y un responsable.");
+  }
+
+  try {
+    const nuevoAlmacen = {
+      lote_id: formData.lote_id, // Usamos el código del lote como ID
+      ubicacion: formData.ubicacion,
+      temperatura_verificada: parseFloat(formData.temperatura_verificada),
+      responsable_id: formData.responsable_id,
+      fecha_registro: new Date().toISOString(),
       synced: 0,
-      dirty: 1,
-      fecha_ingreso: new Date().toISOString()
+      dirty: 1
     };
 
-    await db.almacenamientos.add(nuevoRegistro);
-    alert("Ubicación y temperatura registradas con éxito.");
+    // Al ser 1:1, usamos .put para que si ya existe, se actualice (comportamiento Django)
+    await db.almacenamientos.put(nuevoAlmacen);
+    
+    alert(`✅ Ubicación del lote ${formData.lote_id} registrada con éxito.`);
     window.location.href = '/dashboard';
-  };
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al registrar el almacenamiento.");
+  }
+};
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-slate-900 p-8 rounded-xl border border-slate-800 space-y-6">
-      <div className="border-b border-slate-800 pb-4">
-        <h2 className="text-xl font-bold text-amber-500">Control de Almacenamiento</h2>
-        <p className="text-slate-400 text-sm">Asigne una ubicación física y registre la temperatura del lote.</p>
-      </div>
+    <div className="max-w-4xl mx-auto p-4">
+      <form className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
+          Ingreso a Almacenamiento
+        </h2>
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm text-slate-300 mb-2">Seleccionar Lote Fabricado</label>
-          <select 
-            required
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-amber-500"
-            onChange={(e) => setFormData({...formData, fabricacion_id: e.target.value})}
-          >
-            <option value="">Seleccione un lote...</option>
-            {fabricaciones?.map(f => (
-              <option key={f.id} value={f.id}>{f.codigo_lote}</option>
-            ))}
-          </select>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* SELECCIÓN DE LOTE */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Lote Fabricado</label>
+              <select 
+                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+              >
+                <option value="">Seleccione el lote...</option>
+                {fabricaciones?.map(f => (
+                  <option key={f.codigo_lote} value={f.codigo_lote}>
+                    {f.codigo_lote} - {f.producto}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500 mt-1 italic font-mono uppercase">Solo lotes registrados en fabricación</p>
+            </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">Bodega</label>
-            <input 
-              type="text" required placeholder="Ej: Bodega Central"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-amber-500"
-              onChange={(e) => setFormData({...formData, bodega: e.target.value})}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable del Ingreso</label>
+              <select 
+                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+              >
+                <option value="">Seleccione responsable...</option>
+                {usuarios?.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-2">Estante / Posición</label>
-            <input 
-              type="text" required placeholder="Ej: A-12"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-amber-500"
-              onChange={(e) => setFormData({...formData, estante: e.target.value})}
-            />
+
+          {/* DATOS DE UBICACIÓN Y CONTROL */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Ubicación Física (Bodega/Estante)</label>
+              <input 
+                type="text"
+                placeholder="Ej: Bodega Central - Sector A1"
+                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(e) => setFormData({...formData, ubicacion: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Temperatura Verificada (°C)</label>
+              <input 
+                type="number"
+                step="0.1"
+                placeholder="Ej: 15.5"
+                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(e) => setFormData({...formData, temperatura_verificada: e.target.value})}
+              />
+            </div>
           </div>
+
         </div>
 
-        <div>
-          <label className="block text-sm text-slate-300 mb-2">Temperatura Controlada (°C)</label>
-          <input 
-            type="number" step="0.1" required placeholder="Ej: 18.5"
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-amber-500"
-            onChange={(e) => setFormData({...formData, temperatura_control: e.target.value})}
-          />
-        </div>
-      </div>
-
-      <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-amber-900/20 transition-all">
-        GUARDAR EN ALMACÉN
-      </button>
-    </form>
+        <button 
+          type="submit"
+          className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95"
+        >
+          REGISTRAR UBICACIÓN Y CONTROL
+        </button>
+      </form>
+    </div>
   );
 };

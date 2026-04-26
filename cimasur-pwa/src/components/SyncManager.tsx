@@ -6,6 +6,18 @@ const TABLES_TO_SYNC = ['bases', 'fabricaciones', 'etiquetados', 'almacenamiento
 
 export const SyncManager = () => {
   useEffect(() => {
+
+    const syncPerfiles = async () => {
+      if (!navigator.onLine) return;
+      
+      const { data, error } = await supabase.from('perfiles').select('*');
+      if (data && !error) {
+        // Actualizamos la tabla local de perfiles con los datos frescos de Supabase
+        await db.perfiles.clear();
+        await db.perfiles.bulkAdd(data);
+      }
+    };
+
     const syncData = async () => {
       if (!navigator.onLine) return;
 
@@ -24,6 +36,8 @@ export const SyncManager = () => {
         }
       }
     };
+
+    
 
     window.addEventListener('online', syncData);
     syncData(); // Ejecución inicial

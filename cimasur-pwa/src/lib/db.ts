@@ -20,20 +20,17 @@ export class CimasurOfflineDB extends Dexie {
 
   constructor() {
     super('CimasurLocalStorage');
-    
-    /**
-     * IMPORTANTE:
-     * El primer campo es la Llave Primaria (id).
-     * Los demás son índices para búsquedas rápidas.
-     */
-    this.version(2).stores({
-      categorias: 'id, prefijo',
-      bases: 'id, codigo_base, tecnico_id, synced, dirty',
-      fabricaciones: 'id, codigo_lote, base_id, synced, dirty',
-      etiquetados: 'id, fabricacion_id, synced, dirty',
-      almacenamientos: 'id, fabricacion_id, synced, dirty',
-      ventas: 'id, fabricacion_id, synced, dirty',
-      reclamos: 'id, fabricacion_id, synced, dirty'
+  
+    this.version(4).stores({
+      tipo_base: 'id, nombre',
+      categoria_producto: 'id, nombre',
+      perfiles: 'id, rol, nombre_completo',
+      bases: 'codigo, tipo_id, responsable_id, synced',
+      fabricaciones: 'codigo_lote, base_salina_id, categoria_id, synced',
+      almacenamientos: 'lote_id, responsable_id, synced',
+      etiquetados: 'lote_id, qa, synced',
+      ventas: 'id, lote_id, cliente, synced',
+      reclamos: 'id, lote_id, estado, synced'
     });
   }
 }

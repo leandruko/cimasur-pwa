@@ -1,0 +1,17 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { DashboardShell } from '../../../components/DashboardShell';
+import { UserAdmin } from '../../../components/Admin/UserAdmin';
+import { AuthProvider } from '../../../components/AuthProvider';
+---
+
+<Layout title="Administración de Usuarios">
+  <AuthProvider client:only="react">
+    <DashboardShell title="Gestión de Personal" client:load>
+      <div class="mb-6">
+        <p class="text-slate-400">Administra los técnicos y encargados de QA autorizados para registrar bases y fabricaciones.</p>
+      </div>
+      <UserAdmin client:load />
+    </DashboardShell>
+  </AuthProvider>
+</Layout>
