@@ -1,16 +1,16 @@
 import Dexie, { type Table } from 'dexie';
 
 // Interfaz genérica para manejo offline
-// Usamos 'synced' para saber si ya está en Supabase
-// Usamos 'dirty' para saber si hubo cambios locales pendientes de subir
 interface OfflineMeta {
   synced: 0 | 1;
   dirty: 0 | 1;
 }
 
+
 export class CimasurOfflineDB extends Dexie {
-  // Definimos las tablas basadas en tu SQL
-  categorias!: Table<any>;
+  tipo_base!: Table<any>;
+  categoria_producto!: Table<any>;
+  perfiles!: Table<any>; // Asegúrate de que esta línea esté aquí arriba
   bases!: Table<any & OfflineMeta>;
   fabricaciones!: Table<any & OfflineMeta>;
   etiquetados!: Table<any & OfflineMeta>;
@@ -18,19 +18,20 @@ export class CimasurOfflineDB extends Dexie {
   ventas!: Table<any & OfflineMeta>;
   reclamos!: Table<any & OfflineMeta>;
 
-  constructor() {
+constructor() {
     super('CimasurLocalStorage');
   
-    this.version(4).stores({
+    // Subimos a la versión 8 para asegurar que tome los cambios
+    this.version(8).stores({
       tipo_base: 'id, nombre',
       categoria_producto: 'id, nombre',
-      perfiles: 'id, rol, nombre_completo',
-      bases: 'codigo, tipo_id, responsable_id, synced',
-      fabricaciones: 'codigo_lote, base_salina_id, categoria_id, synced',
-      almacenamientos: 'lote_id, responsable_id, synced',
-      etiquetados: 'lote_id, qa, synced',
-      ventas: 'id, lote_id, cliente, synced',
-      reclamos: 'id, lote_id, estado, synced'
+      perfiles: 'id, cargo, nombre_completo', // SOLO UNA VEZ
+      bases: 'codigo, tipo_id, responsable_id, synced, dirty',
+      fabricaciones: 'codigo_lote, base_salina_id, categoria_id, synced, dirty',
+      almacenamientos: 'lote_id, responsable_id, synced, dirty',
+      etiquetados: 'lote_id, qa, synced, dirty',
+      ventas: 'id, lote_id, cliente, synced, dirty',
+      reclamos: 'id, lote_id, estado, synced, dirty'
     });
   }
 }

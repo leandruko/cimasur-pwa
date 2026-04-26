@@ -37,8 +37,16 @@ export const SyncManager = () => {
       }
     };
 
-    
+    const descargarPerfiles = async () => {
+    const { data } = await supabase.from('perfiles').select('*');
+    if (data) {
+      // Limpiamos y recargamos los perfiles locales en Dexie
+      await db.perfiles.clear();
+      await db.perfiles.bulkAdd(data);
+    }
+  };
 
+  
     window.addEventListener('online', syncData);
     syncData(); // Ejecución inicial
     return () => window.removeEventListener('online', syncData);
