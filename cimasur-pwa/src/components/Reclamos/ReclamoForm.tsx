@@ -14,39 +14,39 @@ export const ReclamoForm = () => {
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!formData.lote_id || !formData.detalles) {
-    return alert("El lote y los detalles son obligatorios para el reporte.");
-  }
+    if (!formData.lote_id || !formData.detalles) {
+      return alert("El lote y los detalles son obligatorios para el reporte.");
+    }
 
-  try {
-    const nuevoReclamo = {
-      id: crypto.randomUUID(),
-      lote_id: formData.lote_id,
-      cliente: formData.cliente,
-      tipo_problema: formData.tipo_problema,
-      detalles: formData.detalles,
-      estado: formData.estado,
-      fecha_registro: new Date().toISOString(),
-      synced: 0,
-      dirty: 1
-    };
+    try {
+      const nuevoReclamo = {
+        id: crypto.randomUUID(),
+        lote_id: formData.lote_id,
+        cliente: formData.cliente,
+        tipo_problema: formData.tipo_problema,
+        detalles: formData.detalles,
+        estado: formData.estado,
+        fecha_registro: new Date().toISOString(),
+        synced: 0,
+        dirty: 1
+      };
 
-    await db.reclamos.add(nuevoReclamo);
-    
-    alert(`✅ Reclamo registrado para el lote ${formData.lote_id}.`);
-    window.location.href = '/dashboard';
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al registrar el reclamo.");
-  }
-};
-
+      await db.reclamos.add(nuevoReclamo);
+      
+      alert(`✅ Reclamo registrado para el lote ${formData.lote_id}.`);
+      window.location.href = '/dashboard';
+    } catch (error) {
+      console.error(error);
+      alert("❌ Error al registrar el reclamo.");
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <form className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
+      {/* CORRECCIÓN: Agregado onSubmit={handleSubmit} */}
+      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <span className="w-2 h-8 bg-red-500 rounded-full"></span>
           Gestión de Reclamos e Incidencias
@@ -58,10 +58,12 @@ export const ReclamoForm = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Lote Relacionado</label>
+              {/* CORRECCIÓN: Agregado value={formData.lote_id} */}
               <select 
                 required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+                value={formData.lote_id}
               >
                 <option value="">Seleccione el lote...</option>
                 {fabricaciones?.map(f => (
@@ -72,11 +74,13 @@ export const ReclamoForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Cliente que Reporta</label>
+              {/* CORRECCIÓN: Agregado value={formData.cliente} */}
               <input 
                 type="text" required
                 placeholder="Nombre o Institución"
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => setFormData({...formData, cliente: e.target.value})}
+                value={formData.cliente}
               />
             </div>
           </div>
@@ -85,9 +89,11 @@ export const ReclamoForm = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Tipo de Problema</label>
+              {/* CORRECCIÓN: Agregado value={formData.tipo_problema} */}
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => setFormData({...formData, tipo_problema: e.target.value})}
+                value={formData.tipo_problema}
               >
                 <option value="Reacción adversa">Reacción adversa</option>
                 <option value="Contaminación">Contaminación</option>
@@ -99,9 +105,11 @@ export const ReclamoForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Estado del Reclamo</label>
+              {/* CORRECCIÓN: Agregado value={formData.estado} */}
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => setFormData({...formData, estado: e.target.value})}
+                value={formData.estado}
               >
                 <option value="Abierto">Abierto</option>
                 <option value="Investigando">Investigando</option>
@@ -112,11 +120,13 @@ export const ReclamoForm = () => {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-400 mb-1">Detalles del Reclamo</label>
+            {/* CORRECCIÓN: Agregado value={formData.detalles} */}
             <textarea 
               required rows={4}
               placeholder="Describa detalladamente el problema reportado..."
               className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
               onChange={(e) => setFormData({...formData, detalles: e.target.value})}
+              value={formData.detalles}
             ></textarea>
           </div>
         </div>

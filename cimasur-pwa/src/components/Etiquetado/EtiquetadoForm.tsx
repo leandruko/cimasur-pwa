@@ -14,39 +14,41 @@ export const EtiquetadoForm = () => {
     qa: 'true',
     responsable_id: '',
   });
+
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!formData.lote_id || !formData.responsable_id) {
-    return alert("Debe seleccionar un lote y un responsable para el registro.");
-  }
+    if (!formData.lote_id || !formData.responsable_id) {
+      return alert("Debe seleccionar un lote y un responsable para el registro.");
+    }
 
-  try {
-    const nuevoEtiquetado = {
-      lote_id: formData.lote_id, // Primary Key (1:1 con Fabricacion)
-      cantidad_etiquetada: parseInt(formData.cantidad_etiquetada),
-      vencimiento_etiqueta: formData.vencimiento_etiqueta,
-      qa: formData.qa === 'true',
-      responsable_id: formData.responsable_id,
-      fecha_registro: new Date().toISOString(),
-      synced: 0,
-      dirty: 1
-    };
+    try {
+      const nuevoEtiquetado = {
+        lote_id: formData.lote_id, // Primary Key (1:1 con Fabricacion)
+        cantidad_etiquetada: parseInt(formData.cantidad_etiquetada) || 0,
+        vencimiento_etiqueta: formData.vencimiento_etiqueta,
+        qa: formData.qa === 'true',
+        responsable_id: formData.responsable_id,
+        fecha_registro: new Date().toISOString(),
+        synced: 0,
+        dirty: 1
+      };
 
-    // Usamos .put para cumplir con el comportamiento OneToOne de Django (update or create)
-    await db.etiquetados.put(nuevoEtiquetado);
-    
-    alert(`✅ Etiquetado del lote ${formData.lote_id} registrado correctamente.`);
-    window.location.href = '/dashboard';
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al registrar el etiquetado.");
-  }
-};
+      // Usamos .put para cumplir con el comportamiento OneToOne de Django (update or create)
+      await db.etiquetados.put(nuevoEtiquetado);
+      
+      alert(`✅ Etiquetado del lote ${formData.lote_id} registrado correctamente.`);
+      window.location.href = '/dashboard';
+    } catch (error) {
+      console.error(error);
+      alert("❌ Error al registrar el etiquetado.");
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <form className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
+      {/* CORRECCIÓN: Agregado onSubmit={handleSubmit} */}
+      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
           Control de Etiquetado y QA Final
@@ -58,9 +60,11 @@ export const EtiquetadoForm = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Lote a Etiquetar</label>
+              {/* CORRECCIÓN: Agregado value={formData.lote_id} */}
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+                value={formData.lote_id}
               >
                 <option value="">Seleccione lote...</option>
                 {fabricaciones?.map(f => (
@@ -73,9 +77,11 @@ export const EtiquetadoForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Responsable del Proceso</label>
+              {/* CORRECCIÓN: Agregado value={formData.responsable_id} */}
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+                value={formData.responsable_id}
               >
                 <option value="">Seleccione responsable...</option>
                 {usuarios?.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
@@ -88,28 +94,34 @@ export const EtiquetadoForm = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Cant. Etiquetada</label>
+                {/* CORRECCIÓN: Agregado value={formData.cantidad_etiquetada} */}
                 <input 
                   type="number"
                   placeholder="0"
                   className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                   onChange={(e) => setFormData({...formData, cantidad_etiquetada: e.target.value})}
+                  value={formData.cantidad_etiquetada}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Venc. Etiqueta</label>
+                {/* CORRECCIÓN: Agregado value={formData.vencimiento_etiqueta} */}
                 <input 
                   type="date"
                   className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                   onChange={(e) => setFormData({...formData, vencimiento_etiqueta: e.target.value})}
+                  value={formData.vencimiento_etiqueta}
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Validación QA (Etiqueta/Envase)</label>
+              {/* CORRECCIÓN: Agregado value={formData.qa} */}
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, qa: e.target.value})}
+                value={formData.qa}
               >
                 <option value="true">✅ OK (Aprobado)</option>
                 <option value="false">❌ NO (Rechazado)</option>
