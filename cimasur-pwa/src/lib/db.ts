@@ -22,7 +22,7 @@ export class CimasurOfflineDB extends Dexie {
     this.version(10).stores({
       tipo_base: 'id, nombre',
       categoria_producto: 'id, nombre',
-      perfiles: 'id, cargo, nombre_completo', // <--- UNA SOLA VEZ
+      perfiles: 'id, cargo, nombre_completo',
       bases: 'codigo, tipo_id, responsable_id, synced, dirty',
       fabricaciones: 'codigo_lote, base_salina_id, categoria_id, synced, dirty',
       almacenamientos: 'lote_id, responsable_id, synced, dirty',
