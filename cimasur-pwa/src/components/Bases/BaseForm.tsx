@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db } from '../../lib/db';
 import { generarCodigoBase } from '../../lib/utils/codigos';
+import { useLiveQuery } from 'dexie-react-hooks'; // Importamos el hook reactivo
 
 export const BaseForm = () => {
-  const [tiposBase, setTiposBase] = useState<any[]>([]);
-  const [responsables, setResponsables] = useState<any[]>([]);
+  // 1. SELECTORES REACTIVOS (Igual que en FabricacionForm)
+  // Estos se llenarán solos en cuanto pullMasterData guarde los datos en Dexie
+  const tiposBase = useLiveQuery(() => db.tipo_base.toArray()) || [];
+  const responsables = useLiveQuery(() => db.perfiles.toArray()) || [];
+
   const [codigoGenerado, setCodigoGenerado] = useState('');
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   
-  // Los 9 campos exactos que pediste
   const [formData, setFormData] = useState({
     tipo_id: '',
     proveedor: '',
@@ -20,29 +24,11 @@ export const BaseForm = () => {
     qa_id: ''
   });
 
-  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  // YA NO NECESITAS useEffect aquí
 
-  // Cargar maestros para los desplegables (Tipo, Responsable, QA)
-  useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const [tipos, perfiles] = await Promise.all([
-          db.tipo_base.toArray(),
-          db.perfiles.toArray()
-        ]);
-        setTiposBase(tipos);
-        setResponsables(perfiles); // Usamos perfiles tanto para Responsable como para QA
-      } catch (error) {
-        console.error("Error cargando datos:", error);
-      }
-    };
-    cargarDatos();
-  }, []);
-
-  // Botón 1: Generar Código
   const handleGenerarCodigo = async () => {
     if (!formData.tipo_id) {
-      setMensaje({ tipo: 'error', texto: 'Selecciona el Tipo de Base para generar el código.' });
+      setMensaje({ tipo: 'error', texto: 'Selecciona el Tipo de Base primero.' });
       return;
     }
     try {
@@ -55,18 +41,10 @@ export const BaseForm = () => {
     }
   };
 
-  // Botón 2: Registrar Base
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMensaje({ tipo: '', texto: '' });
-
     if (!codigoGenerado) {
       setMensaje({ tipo: 'error', texto: 'Debes generar el código base antes de registrar.' });
-      return;
-    }
-
-    if (!formData.tipo_id || !formData.cantidad || !formData.responsable_id) {
-      setMensaje({ tipo: 'error', texto: 'Faltan campos obligatorios.' });
       return;
     }
 
@@ -89,192 +67,129 @@ export const BaseForm = () => {
 
       await db.bases.add(nuevaBase);
 
-      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente con código: ${codigoGenerado}` });
-      
-      // Limpiar todo después de registrar
+      setMensaje({ tipo: 'success', texto: `Lote registrado: ${codigoGenerado}` });
       setFormData({
         tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
         concentracion: '', fecha_elaboracion: '', fecha_vencimiento: '',
         responsable_id: '', qa_id: ''
       });
       setCodigoGenerado('');
-
     } catch (error) {
-      console.error(error);
-      setMensaje({ tipo: 'error', texto: 'Error al registrar la base en el sistema.' });
+      setMensaje({ tipo: 'error', texto: 'Error al registrar en la base de datos.' });
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-        
-        <div className="border-b border-slate-800 pb-4 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Registro de Materia Base</h2>
-            <p className="text-slate-400 text-sm">Completa los datos para ingresar un nuevo lote.</p>
-          </div>
-          {/* Muestra el código generado si existe */}
+    <div className="max-w-4xl mx-auto p-4">
+      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
+            Registro de Materia Base
+          </h2>
           {codigoGenerado && (
-            <div className="bg-blue-900/30 border border-blue-500/50 px-4 py-2 rounded-lg">
-              <span className="text-xs text-blue-400 uppercase font-bold block">Código Generado</span>
-              <span className="text-lg text-white font-mono">{codigoGenerado}</span>
+            <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-lg">
+              <span className="text-blue-400 font-mono font-bold">{codigoGenerado}</span>
             </div>
           )}
         </div>
 
         {mensaje.texto && (
-          <div className={`p-3 rounded-lg text-sm font-medium ${
-            mensaje.tipo === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-          }`}>
+          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
             {mensaje.texto}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* 1. Tipo */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Tipo de Base *</label>
-              <select
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* TIPO DE BASE */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Tipo de Base *</label>
+            <div className="flex gap-2">
+              <select 
+                className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.tipo_id}
                 onChange={(e) => setFormData({...formData, tipo_id: e.target.value})}
               >
-                <option value="">Seleccionar...</option>
-                {tiposBase.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
-                ))}
+                <option value="">Seleccione tipo...</option>
+                {tiposBase.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
-            </div>
-
-            {/* 2. Proveedor */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Proveedor</label>
-              <input
-                type="text"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                placeholder="Nombre del proveedor"
-                value={formData.proveedor}
-                onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
-              />
-            </div>
-
-            {/* 3. Lote de Materia Prima */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Lote Materia Prima</label>
-              <input
-                type="text"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                placeholder="Ej: Lote-12345"
-                value={formData.lote_materia_prima}
-                onChange={(e) => setFormData({...formData, lote_materia_prima: e.target.value})}
-              />
-            </div>
-
-            {/* 4. Cantidad */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Cantidad *</label>
-              <input
-                type="number" step="0.01"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                placeholder="Ej: 100"
-                value={formData.cantidad}
-                onChange={(e) => setFormData({...formData, cantidad: e.target.value})}
-              />
-            </div>
-
-            {/* 5. Concentración */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Concentración</label>
-              <input
-                type="text"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                placeholder="Ej: 98%"
-                value={formData.concentracion}
-                onChange={(e) => setFormData({...formData, concentracion: e.target.value})}
-              />
-            </div>
-
-            {/* 6. Fecha de Elaboración */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Fecha de Elaboración</label>
-              <input
-                type="date"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                value={formData.fecha_elaboracion}
-                onChange={(e) => setFormData({...formData, fecha_elaboracion: e.target.value})}
-              />
-            </div>
-
-            {/* 7. Fecha de Vencimiento */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Fecha de Vencimiento</label>
-              <input
-                type="date"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                value={formData.fecha_vencimiento}
-                onChange={(e) => setFormData({...formData, fecha_vencimiento: e.target.value})}
-              />
-            </div>
-
-            {/* 8. Responsable */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Responsable *</label>
-              <select
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                value={formData.responsable_id}
-                onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
-              >
-                <option value="">Seleccionar...</option>
-                {responsables.map((res) => (
-                  <option key={res.id} value={res.id}>{res.nombre_completo || res.email}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 9. QA */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase ml-1">QA</label>
-              <select
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
-                value={formData.qa_id}
-                onChange={(e) => setFormData({...formData, qa_id: e.target.value})}
-              >
-                <option value="">Seleccionar QA...</option>
-                {responsables.map((res) => (
-                  <option key={res.id} value={res.id}>{res.nombre_completo || res.email}</option>
-                ))}
-              </select>
+              <button type="button" onClick={handleGenerarCodigo} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-xs">
+                GENERAR
+              </button>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 flex gap-4">
-            {/* Botón 1: Generar Código */}
-            <button
-              type="button"
-              onClick={handleGenerarCodigo}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3 rounded-xl transition-all"
-            >
-              ⚙️ GENERAR CÓDIGO
-            </button>
-
-            {/* Botón 2: Registrar Base */}
-            <button
-              type="submit"
-              disabled={!codigoGenerado} // Se bloquea si no hay código generado
-              className={`flex-1 font-bold py-3 rounded-xl transition-all shadow-lg ${
-                codigoGenerado 
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20' 
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              💾 REGISTRAR BASE
-            </button>
+          {/* PROVEEDOR */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Proveedor</label>
+            <input 
+              type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.proveedor} onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
+            />
           </div>
-        </form>
-      </div>
+
+          {/* DATOS TÉCNICOS */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Cant. (L/Kg)</label>
+              <input type="number" step="0.01" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+                value={formData.cantidad} onChange={(e) => setFormData({...formData, cantidad: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Concentración</label>
+              <input type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+                value={formData.concentracion} onChange={(e) => setFormData({...formData, concentracion: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Lote Materia Prima</label>
+            <input type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+              value={formData.lote_materia_prima} onChange={(e) => setFormData({...formData, lote_materia_prima: e.target.value})}
+            />
+          </div>
+
+          {/* FECHAS */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Fecha Elaboración</label>
+            <input type="date" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+              value={formData.fecha_elaboracion} onChange={(e) => setFormData({...formData, fecha_elaboracion: e.target.value})}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Fecha Vencimiento</label>
+            <input type="date" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+              value={formData.fecha_vencimiento} onChange={(e) => setFormData({...formData, fecha_vencimiento: e.target.value})}
+            />
+          </div>
+
+          {/* RESPONSABLES */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
+            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+              value={formData.responsable_id} onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+            >
+              <option value="">Seleccione responsable...</option>
+              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo || r.email}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Control QA</label>
+            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+              value={formData.qa_id} onChange={(e) => setFormData({...formData, qa_id: e.target.value})}
+            >
+              <option value="">Seleccione QA...</option>
+              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo || r.email}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" disabled={!codigoGenerado} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50">
+          REGISTRAR MATERIA BASE
+        </button>
+      </form>
     </div>
   );
 };
