@@ -1,7 +1,9 @@
 import { db } from '../db';
 
+/**
+ * Función genérica para generar códigos con formato PREFIJO-YYYYMMDD-00X
+ */
 export const generateCode = async (prefijo: string, tabla: 'bases' | 'fabricaciones') => {
-  // 1. Obtener la fecha en formato YYYYMMDD
   const hoy = new Date();
   const yyyy = hoy.getFullYear();
   const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -10,7 +12,6 @@ export const generateCode = async (prefijo: string, tabla: 'bases' | 'fabricacio
 
   let totalHoy = 0;
 
-  // 2. Contar cuántos registros van hoy en esa tabla para hacer el correlativo
   if (tabla === 'fabricaciones') {
     const records = await db.fabricaciones
       .filter(f => typeof f.codigo_lote === 'string' && f.codigo_lote.includes(fechaStr))
@@ -23,9 +24,20 @@ export const generateCode = async (prefijo: string, tabla: 'bases' | 'fabricacio
     totalHoy = records.length;
   }
 
-  // 3. Sumar 1 y asegurar que tenga 3 dígitos (001, 002, 015, etc.)
   const correlativo = String(totalHoy + 1).padStart(3, '0');
-  
-  // 4. Retornar el código formateado
   return `${prefijo}-${fechaStr}-${correlativo}`;
+};
+
+/**
+ * ALIAS para BaseForm (para que no te de error el import que ya tienes)
+ */
+export const generarCodigoBase = async (prefijo: string) => {
+  return await generateCode(prefijo, 'bases');
+};
+
+/**
+ * ALIAS para FabricacionForm
+ */
+export const generarCodigoLote = async (prefijo: string) => {
+  return await generateCode(prefijo, 'fabricaciones');
 };

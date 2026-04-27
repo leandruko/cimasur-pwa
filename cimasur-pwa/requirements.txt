@@ -1,0 +1,12 @@
+# 1. Limpiar instalaciones previas si existen
+rm -rf node_modules package-lock.json
+
+# 2. Instalación base ignorando conflictos de Astro 6 / Adaptador Node
+# Usamos --legacy-peer-deps para que no se detenga por el aviso de Astro 5
+npm install --legacy-peer-deps
+
+# 3. Instalación específica de los hooks de Dexie (críticos para los formularios)
+npm install dexie-react-hooks --legacy-peer-deps
+
+# 4. Verificar que las librerías principales estén presentes
+npm list dexie dexie-react-hooks @supabase/supabase-js
