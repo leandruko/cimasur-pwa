@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/db';
 import { 
-  Search, Loader2, Printer, FileText, 
-  CheckCircle, AlertCircle, Calendar, Hash, User, MapPin
+  Search, Loader2, Printer, ChevronRight, X, AlertCircle, Package, History
 } from 'lucide-react';
 
 export const Searcher = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [lotesHoy, setLotesHoy] = useState<any[]>([]);
+  const [sugerencias, setSugerencias] = useState<any[]>([]);
+  const [loteSeleccionado, setLoteSeleccionado] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Cargar lotes de hoy al inicio
+  useEffect(() => {
+    const cargarLotesHoy = async () => {
+      try {
+        const hoyStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const todos = await db.fabricaciones.toArray();
+        const filtrados = todos.filter(f => f.codigo_lote && f.codigo_lote.includes(hoyStr));
+        setLotesHoy(filtrados);
+      } catch (e) {
+        console.error("Error cargando lotes de hoy:", e);
+      }
+    };
+    cargarLotesHoy();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,20 +33,30 @@ export const Searcher = () => {
     if (!term) return;
 
     setLoading(true);
+    setError(null);
+    setLoteSeleccionado(null);
+
     try {
-      // 1. Buscamos en Fabricaciones (Lotes) permitiendo coincidencias parciales
       const todasFab = await db.fabricaciones.toArray();
-      const lote = todasFab.find(f => f.codigo_lote.toUpperCase().includes(term));
+      const coincidencias = todasFab.filter(f => 
+        f.codigo_lote && f.codigo_lote.toUpperCase().includes(term)
+      );
+      setSugerencias(coincidencias);
+      if (coincidencias.length === 0) setError("No se encontraron lotes con ese código.");
+    } catch (err) {
+      setError("Error al buscar en la base de datos.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (!lote) {
-        setResults('NOT_FOUND');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Buscamos toda la cadena de datos relacionada
+  const seleccionarLote = async (lote: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Consultas seguras (si una falla, las otras siguen)
       const [base, almacen, etiquetado, ventas, reclamos, perfiles] = await Promise.all([
-        db.bases.where('codigo').equals(lote.base_salina_id).first(),
+        lote.base_salina_id ? db.bases.where('codigo').equals(lote.base_salina_id).first() : null,
         db.almacenamientos.where('lote_id').equals(lote.codigo_lote).first(),
         db.etiquetados.where('lote_id').equals(lote.codigo_lote).first(),
         db.ventas.where('lote_id').equals(lote.codigo_lote).toArray(),
@@ -37,222 +64,276 @@ export const Searcher = () => {
         db.perfiles.toArray()
       ]);
 
-      // Función para resolver nombres de responsables
-      const getNombre = (id: string) => perfiles.find(p => p.id === id)?.nombre_completo || 'No asignado';
+      const getNombre = (id: string) => {
+        if (!id) return 'N/A';
+        return perfiles.find(p => p.id === id)?.nombre_completo || 'N/A';
+      };
 
-      setResults({
-        lote,
-        base,
-        almacen,
-        etiquetado,
-        ventas,
-        reclamos,
+      setLoteSeleccionado({ 
+        lote, base, almacen, etiquetado, ventas: ventas || [], reclamos: reclamos || [],
         responsables: {
-          fabricacion: getNombre(lote.responsable_id),
+          fab: getNombre(lote.responsable_id),
           base: base ? getNombre(base.responsable_id) : 'N/A',
-          almacen: almacen ? getNombre(almacen.responsable_id) : 'N/A',
-          etiquetado: etiquetado ? getNombre(etiquetado.responsable_id) : 'N/A'
+          almacen: almacen ? getNombre(almacen.responsable_id) : 'N/A'
         }
       });
-    } catch (error) {
-      console.error("Error en búsqueda:", error);
+      setSugerencias([]);
+      setSearchTerm(lote.codigo_lote);
+    } catch (err) {
+      console.error(err);
+      setError("Error al cargar los detalles del lote.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
-      {/* BUSCADOR (No se verá en el PDF/Impresión) */}
-      <form onSubmit={handleSearch} className="flex gap-2 no-print">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            className="w-full bg-slate-900 border-2 border-slate-800 text-white p-4 pl-12 rounded-2xl focus:border-blue-500 outline-none transition-all"
-            placeholder="Escriba el lote (ej: 001, MUR...)"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      
+      {/* 1. INTERFAZ DE BUSQUEDA (no-print) */}
+      <div className="no-print space-y-4">
+        {/* Lotes de Hoy */}
+        <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-2 mb-3 text-slate-400 text-xs font-bold uppercase">
+            <History size={14} /> Producción Reciente (Hoy)
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {lotesHoy.length > 0 ? lotesHoy.map(l => (
+              <button 
+                key={l.codigo_lote} 
+                onClick={() => seleccionarLote(l)} 
+                className="text-[10px] bg-slate-800 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors font-mono"
+              >
+                {l.codigo_lote}
+              </button>
+            )) : <p className="text-slate-600 text-[10px] italic">Sin registros hoy.</p>}
+          </div>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-500 text-white px-8 rounded-2xl font-bold flex items-center gap-2">
-          {loading ? <Loader2 className="animate-spin" /> : 'GENERAR REPORTE'}
-        </button>
-      </form>
 
-      {results === 'NOT_FOUND' && (
-        <div className="p-8 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-center">
-          No se encontró ningún lote que coincida con "{searchTerm}"
-        </div>
-      )}
-
-      {/* DOCUMENTO DE TRAZABILIDAD */}
-      {results && results !== 'NOT_FOUND' && (
-        <div className="bg-white text-slate-900 p-12 shadow-2xl rounded-sm border-t-[16px] border-blue-600 print:shadow-none print:p-0 relative">
-          
-          {/* Botón de Impresión Flotante (Solo pantalla) */}
-          <button 
-            onClick={handlePrint}
-            className="absolute top-6 right-6 no-print bg-slate-100 hover:bg-slate-200 p-3 rounded-full transition-colors"
-            title="Imprimir o Guardar PDF"
-          >
-            <Printer className="w-6 h-6 text-slate-600" />
+        {/* Buscador Principal */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
+            <input
+              type="text"
+              className="w-full bg-slate-900 border-2 border-slate-800 text-white p-4 pl-12 rounded-2xl focus:border-blue-500 outline-none transition-all"
+              placeholder="Buscar por lote (ej: 001, 2026...)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                type="button"
+                onClick={() => {setSearchTerm(''); setLoteSeleccionado(null); setSugerencias([]);}}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+          <button className="bg-blue-600 hover:bg-blue-500 text-white px-8 rounded-2xl font-bold transition-all shadow-lg shadow-blue-900/20">
+            {loading ? <Loader2 className="animate-spin" /> : 'RASTREAR'}
           </button>
+        </form>
 
-          {/* ENCABEZADO OFICIAL */}
-          <div className="flex justify-between items-start border-b-2 border-slate-100 pb-8 mb-10">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-black text-3xl">C</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-tighter text-slate-900">CIMASUR S.A.</h1>
-                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em]">Quality Control & Traceability System</p>
-              </div>
+        {/* Sugerencias de búsqueda */}
+        {sugerencias.length > 0 && (
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-[10px] font-bold text-slate-500 p-3 bg-slate-800/50 border-b border-slate-800">COINCIDENCIAS ENCONTRADAS ({sugerencias.length})</div>
+            {sugerencias.map(s => (
+              <button 
+                key={s.codigo_lote} 
+                onClick={() => seleccionarLote(s)} 
+                className="w-full text-left p-4 hover:bg-blue-600/20 text-white text-sm border-b border-slate-800/50 flex justify-between items-center group"
+              >
+                <span className="font-mono font-bold group-hover:text-blue-400">{s.codigo_lote}</span>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-sm">
+            <AlertCircle size={18} /> {error}
+          </div>
+        )}
+      </div>
+
+      {/* 2. DOCUMENTO DE TRAZABILIDAD (Seccion Imprimible) */}
+      {loteSeleccionado && (
+        <div id="printable-report" className="bg-white text-slate-900 p-12 rounded-sm shadow-2xl border-t-[12px] border-black print:shadow-none print:p-0 print:border-none">
+          
+          {/* Cabecera del Documento */}
+          <div className="flex justify-between items-start border-b-2 border-black pb-6 mb-10">
+            <div>
+              <h1 className="text-3xl font-black tracking-tighter">CIMASUR S.A.</h1>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reporte de Trazabilidad Industrial</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Certificado de Lote</p>
-              <p className="text-3xl font-mono font-black text-slate-900">{results.lote.codigo_lote}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Generado: {new Date().toLocaleString()}</p>
+              <button 
+                onClick={() => window.print()} 
+                className="no-print mb-4 bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-bold hover:bg-slate-800 transition-all"
+              >
+                <Printer size={14} /> IMPRIMIR REGISTRO
+              </button>
+              <p className="text-[9px] font-bold text-slate-400 uppercase">Documento Lote Nº</p>
+              <p className="text-2xl font-mono font-black">{loteSeleccionado.lote.codigo_lote}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-12">
-            
-            {/* SECCIÓN 1: MATERIA BASE */}
+          <div className="space-y-12">
+            {/* Seccion 1: Fabricación */}
             <section>
-              <h3 className="flex items-center gap-2 text-blue-600 font-black text-sm mb-5">
-                <div className="w-2 h-4 bg-blue-600"></div> 1. INFORMACIÓN DE MATERIA BASE (ORIGEN)
-              </h3>
-              <div className="grid grid-cols-3 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h3 className="text-xs font-black bg-slate-100 p-2 mb-6 border-l-4 border-black uppercase">1. Información de Proceso y Lote</h3>
+              <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
                 <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Código de Base</label>
-                  <p className="font-bold text-sm">{results.base?.codigo || 'N/A'}</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Fecha Producción</label>
+                  <p className="font-bold">{loteSeleccionado.lote.created_at?.split('T')[0] || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Proveedor / Lote MP</label>
-                  <p className="font-bold text-sm">{results.base?.proveedor || 'No reg.'} | {results.base?.lote_materia_prima || 'N/A'}</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Cantidad Total</label>
+                  <p className="font-bold">{loteSeleccionado.lote.cantidad_final || 0} Unidades</p>
                 </div>
                 <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Responsable Proceso</label>
-                  <p className="font-bold text-sm">{results.responsables.base}</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Responsable de Planta</label>
+                  <p className="font-bold">{loteSeleccionado.responsables.fab}</p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Rendimiento</label>
+                  <p className="font-bold">{loteSeleccionado.lote.rendimiento || 0}%</p>
                 </div>
               </div>
             </section>
 
-            {/* SECCIÓN 2: FABRICACIÓN */}
+            {/* Seccion 2: Materia Base */}
             <section>
-              <h3 className="flex items-center gap-2 text-blue-600 font-black text-sm mb-5">
-                <div className="w-2 h-4 bg-blue-600"></div> 2. REGISTRO DE PRODUCCIÓN INDUSTRIAL
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 border border-slate-100 p-8 rounded-2xl">
+              <h3 className="text-xs font-black bg-slate-100 p-2 mb-6 border-l-4 border-black uppercase">2. Trazabilidad de Materia Base</h3>
+              <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
                 <div>
-                  <div className="flex items-center gap-2 text-slate-400 mb-2"><Calendar size={14}/> <span className="text-[9px] font-bold uppercase">Fecha</span></div>
-                  <p className="font-bold text-sm">{results.lote.created_at ? results.lote.created_at.split('T')[0] : 'No reg.'}</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Código de Base Origen</label>
+                  <p className="font-bold font-mono">{loteSeleccionado.base?.codigo || 'N/A'}</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 text-slate-400 mb-2"><Hash size={14}/> <span className="text-[9px] font-bold uppercase">Cantidades</span></div>
-                  <p className="text-xs">Uso: <span className="font-bold">{results.lote.cantidad_base}L/Kg</span></p>
-                  <p className="text-xs">Prod: <span className="font-bold text-blue-600">{results.lote.cantidad_final} Unidades</span></p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Proveedor / Lote MP</label>
+                  <p className="font-bold">{loteSeleccionado.base?.proveedor || 'N/A'} | {loteSeleccionado.base?.lote_materia_prima || 'N/A'}</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 text-slate-400 mb-2"><User size={14}/> <span className="text-[9px] font-bold uppercase">Operador</span></div>
-                  <p className="font-bold text-sm">{results.responsables.fabricacion}</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Responsable Base</label>
+                  <p className="font-bold">{loteSeleccionado.responsables.base}</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 text-slate-400 mb-2"><CheckCircle size={14} className="text-green-500"/> <span className="text-[9px] font-bold uppercase">Eficiencia</span></div>
-                  <p className="font-bold text-sm">{results.lote.rendimiento}%</p>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Litros/Kilos Utilizados</label>
+                  <p className="font-bold">{loteSeleccionado.lote.cantidad_base || 0} L/Kg</p>
                 </div>
               </div>
             </section>
 
-            {/* SECCIÓN 3: LOGÍSTICA Y CALIDAD */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <section>
-                <h3 className="flex items-center gap-2 text-blue-600 font-black text-sm mb-5">
-                  <div className="w-2 h-4 bg-blue-600"></div> 3. LOGÍSTICA & ALMACÉN
-                </h3>
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-                    <span className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase"><MapPin size={12}/> Ubicación</span>
-                    <span className="font-bold text-sm">{results.almacen?.ubicacion || 'Pendiente'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase"><User size={12}/> Verificado por</span>
-                    <span className="font-bold text-sm">{results.responsables.almacen}</span>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h3 className="flex items-center gap-2 text-blue-600 font-black text-sm mb-5">
-                  <div className="w-2 h-4 bg-blue-600"></div> 4. SALIDAS Y DESPACHOS (VENTAS)
-                </h3>
-                <div className="space-y-2 max-h-[200px] overflow-auto">
-                  {results.ventas.map((v: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border-l-4 border-slate-300">
-                      <span className="text-xs font-bold text-slate-700">{v.cliente}</span>
-                      <span className="text-[10px] bg-white px-3 py-1 rounded-full shadow-sm font-black">{v.cantidad_vendida} UDS</span>
-                    </div>
-                  ))}
-                  {results.ventas.length === 0 && <p className="text-xs italic text-slate-400 text-center py-4">Sin registros de venta para este lote.</p>}
-                </div>
-              </section>
-            </div>
-
-            {/* SECCIÓN 4: RECLAMOS */}
+            {/* Seccion 3: Almacen y Calidad */}
             <section>
-              <h3 className={`flex items-center gap-2 font-black text-sm mb-5 ${results.reclamos.length > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                <div className={`w-2 h-4 ${results.reclamos.length > 0 ? 'bg-red-600' : 'bg-green-600'}`}></div> 5. INCIDENCIAS Y NO CONFORMIDADES
-              </h3>
-              {results.reclamos.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {results.reclamos.map((r: any, idx: number) => (
-                    <div key={idx} className="bg-red-50 p-5 rounded-2xl border border-red-100 flex gap-4">
-                      <div>
-                        <p className="text-[9px] font-black text-red-600 uppercase mb-1">{r.tipo_reclamo} - {r.fecha}</p>
-                        <p className="text-sm text-red-900 leading-relaxed">{r.descripcion}</p>
-                      </div>
+              <h3 className="text-xs font-black bg-slate-100 p-2 mb-6 border-l-4 border-black uppercase">3. Control de Calidad y Logística</h3>
+              <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Ubicación en Almacén</label>
+                  <p className="font-bold">{loteSeleccionado.almacen?.ubicacion || 'PENDIENTE'}</p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Aprobación Etiquetado (QA)</label>
+                  <p className={`font-bold ${loteSeleccionado.etiquetado?.qa ? 'text-green-600' : 'text-slate-400'}`}>
+                    {loteSeleccionado.etiquetado?.qa || 'PENDIENTE'}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Seccion 4: Salidas / Ventas */}
+            <section>
+              <h3 className="text-xs font-black bg-slate-100 p-2 mb-6 border-l-4 border-black uppercase">4. Registro de Salidas y Clientes</h3>
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-black">
+                    <th className="py-2 text-[10px] font-bold text-slate-400 uppercase">Cliente / Destino</th>
+                    <th className="py-2 text-[10px] font-bold text-slate-400 uppercase text-right">Cantidad Despachada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loteSeleccionado.ventas.length > 0 ? loteSeleccionado.ventas.map((v: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-3 font-medium">{v.cliente}</td>
+                      <td className="py-3 text-right font-bold">{v.cantidad_vendida} UDS</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={2} className="py-6 text-center text-slate-400 italic">No se registran salidas comerciales para este lote.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </section>
+
+            {/* Seccion 5: Reclamos */}
+            <section>
+              <h3 className="text-xs font-black bg-slate-100 p-2 mb-6 border-l-4 border-black uppercase">5. Incidencias y Reclamos Reportados</h3>
+              {loteSeleccionado.reclamos.length > 0 ? (
+                <div className="space-y-4">
+                  {loteSeleccionado.reclamos.map((r: any, i: number) => (
+                    <div key={i} className="p-4 border border-slate-200 rounded-lg">
+                      <p className="text-[10px] font-bold text-red-600 uppercase mb-1">{r.tipo_reclamo} - {r.fecha || r.fecha_registro?.split('T')[0]}</p>
+                      <p className="text-sm font-bold text-slate-700">{r.descripcion}</p>
+                      <p className="text-[10px] text-slate-400 mt-2">Estado: {r.estado}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="bg-green-50 p-6 rounded-2xl border border-green-100 flex items-center gap-4">
-                  <CheckCircle className="text-green-600" />
-                  <p className="text-xs font-bold text-green-700 uppercase tracking-tight">Producto verificado: El lote no presenta registros de reclamos o incidencias técnicas.</p>
+                <div className="p-6 text-center bg-slate-50 border border-slate-100 rounded-2xl text-slate-400 text-xs italic">
+                  Lote libre de incidencias y reclamos.
                 </div>
               )}
             </section>
           </div>
 
-          {/* PIE DE PÁGINA DOCUMENTO */}
-          <div className="mt-20 pt-10 border-t border-slate-100">
-            <div className="flex justify-between items-end">
-              <div className="text-[8px] text-slate-400 uppercase tracking-widest font-bold">
-                CIMASUR PWA - Traceability Module v1.0<br/>
-                Internal Document - Confidential
-              </div>
+          {/* Firmas */}
+          <div className="mt-24 grid grid-cols-2 gap-20 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">
+            <div>
+              <div className="border-t border-slate-300 mb-2"></div>
+              Responsable de Producción
+            </div>
+            <div>
+              <div className="border-t border-slate-300 mb-2"></div>
+              Responsable Control de Calidad
             </div>
           </div>
         </div>
       )}
 
-      {/* CSS para Impresión */}
+      {/* ESTILOS DE IMPRESIÓN MEJORADOS */}
       <style>{`
         @media print {
-          body { background: white !important; }
-          .no-print { display: none !important; }
-          #trazabilidad-documento { 
-            box-shadow: none !important; 
-            border: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
+          /* Ocultar TODO el cuerpo */
+          body * {
+            visibility: hidden;
+            background-color: white !important;
           }
-          @page { margin: 1cm; }
+          /* Mostrar SOLO el reporte y sus hijos */
+          #printable-report, #printable-report * {
+            visibility: visible;
+          }
+          /* Posicionar el reporte arriba */
+          #printable-report {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-shadow: none;
+            border: none;
+          }
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            size: portrait;
+            margin: 1.5cm;
+          }
         }
       `}</style>
     </div>
