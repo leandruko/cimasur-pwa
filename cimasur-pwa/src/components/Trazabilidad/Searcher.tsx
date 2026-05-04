@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/db';
 import * as XLSX from 'xlsx'; // Importamos la librería para Excel
 import { 
-  Search, Loader2, Printer, ChevronRight, X, AlertCircle, FileSpreadsheet, History
+  Search, Loader2, Printer, ChevronRight, FileSpreadsheet, History
 } from 'lucide-react';
 
 export const Searcher = () => {
@@ -54,8 +54,11 @@ export const Searcher = () => {
     setLoading(true);
     setError(null);
     try {
+      // Búsqueda robusta del ID de la base
+      const baseId = lote.base_id || lote.base_salina_id;
+
       const [base, almacen, etiquetado, ventas, reclamos, perfiles] = await Promise.all([
-        lote.base_salina_id ? db.bases.where('codigo').equals(lote.base_salina_id).first() : null,
+        baseId ? db.bases.where('codigo').equals(baseId).first() : null,
         db.almacenamientos.where('lote_id').equals(lote.codigo_lote).first(),
         db.etiquetados.where('lote_id').equals(lote.codigo_lote).first(),
         db.ventas.where('lote_id').equals(lote.codigo_lote).toArray(),
@@ -88,13 +91,17 @@ export const Searcher = () => {
 
     const { lote, base, almacen, etiquetado, ventas, responsables } = loteSeleccionado;
 
+    // Variables robustas para evitar datos vacíos
+    const cantidadTotal = lote.cantidad_frascos || lote.cantidad_final || lote.cantidad || 0;
+    const fechaProd = lote.created_at?.split('T')[0] || lote.fecha || lote.fecha_elaboracion || 'N/A';
+
     // Hoja 1: Resumen de Trazabilidad
     const resumenData = [
       { SECCIÓN: "PROCESO", CAMPO: "Lote Final", VALOR: lote.codigo_lote },
-      { SECCIÓN: "PROCESO", CAMPO: "Fecha Producción", VALOR: lote.created_at?.split('T')[0] },
+      { SECCIÓN: "PROCESO", CAMPO: "Fecha Producción", VALOR: fechaProd },
       { SECCIÓN: "PROCESO", CAMPO: "Responsable Planta", VALOR: responsables.fab },
-      { SECCIÓN: "PROCESO", CAMPO: "Cantidad Unidades", VALOR: lote.cantidad_final },
-      { SECCIÓN: "ORIGEN", CAMPO: "Materia Base", VALOR: base?.codigo || 'N/A' },
+      { SECCIÓN: "PROCESO", CAMPO: "Cantidad Unidades", VALOR: cantidadTotal },
+      { SECCIÓN: "ORIGEN", CAMPO: "Materia Base", VALOR: base?.codigo || lote.base_id || lote.base_salina_id || 'N/A' },
       { SECCIÓN: "ORIGEN", CAMPO: "Proveedor", VALOR: base?.proveedor || 'N/A' },
       { SECCIÓN: "ORIGEN", CAMPO: "Lote MP", VALOR: base?.lote_materia_prima || 'N/A' },
       { SECCIÓN: "CALIDAD", CAMPO: "Ubicación Almacén", VALOR: almacen?.ubicacion || 'PENDIENTE' },
@@ -104,9 +111,9 @@ export const Searcher = () => {
     // Hoja 2: Distribución (Ventas)
     const ventasData = ventas.map((v: any) => ({
       Cliente: v.cliente,
-      Cantidad: v.cantidad_vendida,
+      Cantidad: v.cantidad_vendida || v.cantidad,
       Unidad: "UDS",
-      Fecha_Venta: v.created_at?.split('T')[0] || 'N/A'
+      Fecha_Venta: v.created_at?.split('T')[0] || v.fecha || 'N/A'
     }));
 
     // Crear el Libro y las Hojas
@@ -178,6 +185,12 @@ export const Searcher = () => {
           </button>
         </form>
 
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">
+            {error}
+          </div>
+        )}
+
         {sugerencias.length > 0 && (
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
             {sugerencias.map(s => (
@@ -201,10 +214,10 @@ export const Searcher = () => {
           <div className="flex justify-between items-start border-b-2 border-black pb-6 mb-10">
             <div>
               <h1 className="text-3xl font-black tracking-tighter">CIMASUR S.A.</h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reporte de Trazabilidad Industrial</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Reporte de Trazabilidad Industrial</p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] font-bold text-slate-400 uppercase">Documento Lote Nº</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Documento Lote Nº</p>
               <p className="text-2xl font-mono font-black">{loteSeleccionado.lote.codigo_lote}</p>
             </div>
           </div>
@@ -215,11 +228,15 @@ export const Searcher = () => {
               <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Fecha Producción</label>
-                  <p className="font-bold">{loteSeleccionado.lote.created_at?.split('T')[0] || 'N/A'}</p>
+                  <p className="font-bold">
+                    {loteSeleccionado.lote.created_at?.split('T')[0] || loteSeleccionado.lote.fecha || loteSeleccionado.lote.fecha_elaboracion || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Cantidad Total</label>
-                  <p className="font-bold">{loteSeleccionado.lote.cantidad_final || 0} Unidades</p>
+                  <p className="font-bold">
+                    {loteSeleccionado.lote.cantidad_frascos || loteSeleccionado.lote.cantidad_final || loteSeleccionado.lote.cantidad || 0} Unidades
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Responsable de Planta</label>
@@ -233,11 +250,15 @@ export const Searcher = () => {
               <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Código de Base Origen</label>
-                  <p className="font-bold font-mono">{loteSeleccionado.base?.codigo || 'N/A'}</p>
+                  <p className="font-bold font-mono">
+                    {loteSeleccionado.base?.codigo || loteSeleccionado.lote.base_id || loteSeleccionado.lote.base_salina_id || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Proveedor / Lote MP</label>
-                  <p className="font-bold">{loteSeleccionado.base?.proveedor || 'N/A'}</p>
+                  <p className="font-bold">
+                    {loteSeleccionado.base ? `${loteSeleccionado.base.proveedor || 'N/A'} / ${loteSeleccionado.base.lote_materia_prima || 'N/A'}` : 'N/A'}
+                  </p>
                 </div>
               </div>
             </section>
@@ -255,7 +276,7 @@ export const Searcher = () => {
                   {loteSeleccionado.ventas.length > 0 ? loteSeleccionado.ventas.map((v: any, i: number) => (
                     <tr key={i} className="border-b border-slate-100">
                       <td className="py-3 font-medium">{v.cliente}</td>
-                      <td className="py-3 text-right font-bold">{v.cantidad_vendida} UDS</td>
+                      <td className="py-3 text-right font-bold">{v.cantidad_vendida || v.cantidad} UDS</td>
                     </tr>
                   )) : (
                     <tr><td colSpan={2} className="py-6 text-center text-slate-400 italic">No se registran salidas.</td></tr>
@@ -270,8 +291,8 @@ export const Searcher = () => {
                 <div className="space-y-4">
                   {loteSeleccionado.reclamos.map((r: any, i: number) => (
                     <div key={i} className="p-4 border border-slate-200 rounded-lg">
-                      <p className="text-[10px] font-bold text-red-600 uppercase mb-1">{r.tipo_reclamo}</p>
-                      <p className="text-sm font-bold text-slate-700">{r.descripcion}</p>
+                      <p className="text-[10px] font-bold text-red-600 uppercase mb-1">{r.tipo_reclamo || r.tipo_problema || 'INCIDENCIA'}</p>
+                      <p className="text-sm font-bold text-slate-700">{r.descripcion || r.detalles}</p>
                     </div>
                   ))}
                 </div>
