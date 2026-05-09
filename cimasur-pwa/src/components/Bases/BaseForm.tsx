@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { db } from '../../lib/db';
+import { supabase } from '../../lib/supabase'; // Importación directa de Supabase
 import { generarCodigoBase } from '../../lib/utils/codigos';
-import { useLiveQuery } from 'dexie-react-hooks'; // Importamos el hook reactivo
+import { useLiveQuery } from 'dexie-react-hooks'; 
+import { db } from '../../lib/db'; // Seguimos usando Dexie solo para leer datos maestros rápido
 
 export const BaseForm = () => {
-  // 1. SELECTORES REACTIVOS (Igual que en FabricacionForm)
-  // Estos se llenarán solos en cuanto pullMasterData guarde los datos en Dexie
+  // Mantenemos useLiveQuery solo para los selectores (mejora la velocidad de carga)
   const tiposBase = useLiveQuery(() => db.tipo_base.toArray()) || [];
   const responsables = useLiveQuery(() => db.perfiles.toArray()) || [];
 
   const [codigoGenerado, setCodigoGenerado] = useState('');
+  const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   
   const [formData, setFormData] = useState({
@@ -21,10 +22,8 @@ export const BaseForm = () => {
     fecha_elaboracion: '',
     fecha_vencimiento: '',
     responsable_id: '',
-    qa_id: ''
+    qa: 'OK' // Cambiado a valor directo OK/NO
   });
-
-  // YA NO NECESITAS useEffect aquí
 
   const handleGenerarCodigo = async () => {
     if (!formData.tipo_id) {
@@ -35,7 +34,6 @@ export const BaseForm = () => {
       const tipoSeleccionado = tiposBase.find(t => String(t.id) === String(formData.tipo_id));
       const codigo = await generarCodigoBase(tipoSeleccionado?.nombre || 'GEN');
       setCodigoGenerado(codigo);
-      setMensaje({ tipo: 'success', texto: 'Código generado correctamente.' });
     } catch (error) {
       setMensaje({ tipo: 'error', texto: 'Error al generar el código.' });
     }
@@ -48,34 +46,41 @@ export const BaseForm = () => {
       return;
     }
 
+    setLoading(true);
     try {
-      const nuevaBase = {
-        codigo: codigoGenerado,
-        tipo_id: formData.tipo_id,
-        proveedor: formData.proveedor,
-        lote_materia_prima: formData.lote_materia_prima,
-        cantidad: Number(formData.cantidad),
-        concentracion: formData.concentracion,
-        fecha_elaboracion: formData.fecha_elaboracion,
-        fecha_vencimiento: formData.fecha_vencimiento,
-        responsable_id: formData.responsable_id,
-        qa_id: formData.qa_id,
-        created_at: new Date().toISOString(),
-        synced: 0,
-        dirty: 1
-      };
+      // INSERCIÓN DIRECTA EN SUPABASE
+      const { error } = await supabase
+        .from('bases')
+        .insert([{
+          codigo: codigoGenerado,
+          tipo_id: formData.tipo_id,
+          proveedor: formData.proveedor,
+          lote_materia_prima: formData.lote_materia_prima,
+          cantidad: Number(formData.cantidad),
+          concentracion: formData.concentracion,
+          fecha_elaboracion: formData.fecha_elaboracion,
+          fecha_vencimiento: formData.fecha_vencimiento,
+          responsable_id: formData.responsable_id,
+          qa: formData.qa
+        }]);
 
-      await db.bases.add(nuevaBase);
+      if (error) throw error;
 
-      setMensaje({ tipo: 'success', texto: `Lote registrado: ${codigoGenerado}` });
+      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente en la nube: ${codigoGenerado}` });
+      
+      // Limpiar formulario
       setFormData({
         tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
         concentracion: '', fecha_elaboracion: '', fecha_vencimiento: '',
-        responsable_id: '', qa_id: ''
+        responsable_id: '', qa: 'OK'
       });
       setCodigoGenerado('');
-    } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al registrar en la base de datos.' });
+      
+    } catch (error: any) {
+      console.error("Error en Supabase:", error);
+      setMensaje({ tipo: 'error', texto: `Error al guardar en la nube: ${error.message}` });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,11 +90,11 @@ export const BaseForm = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
-            Registro de Materia Base
+            Registro de Materia Base (Online)
           </h2>
           {codigoGenerado && (
-            <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-lg">
-              <span className="text-blue-400 font-mono font-bold">{codigoGenerado}</span>
+            <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-lg font-mono font-bold text-blue-400">
+              {codigoGenerado}
             </div>
           )}
         </div>
@@ -106,6 +111,7 @@ export const BaseForm = () => {
             <label className="block text-sm font-medium text-slate-400 mb-1">Tipo de Base *</label>
             <div className="flex gap-2">
               <select 
+                required
                 className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.tipo_id}
                 onChange={(e) => setFormData({...formData, tipo_id: e.target.value})}
@@ -168,26 +174,32 @@ export const BaseForm = () => {
           {/* RESPONSABLES */}
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
-            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
+            <select required className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.responsable_id} onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
             >
               <option value="">Seleccione responsable...</option>
-              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo || r.email}</option>)}
+              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo}</option>)}
             </select>
           </div>
+
+          {/* CONTROL QA (OK / NO) */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Control QA</label>
-            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-              value={formData.qa_id} onChange={(e) => setFormData({...formData, qa_id: e.target.value})}
+            <label className="block text-sm font-medium text-slate-400 mb-1">Control QA *</label>
+            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.qa} onChange={(e) => setFormData({...formData, qa: e.target.value})}
             >
-              <option value="">Seleccione QA...</option>
-              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo || r.email}</option>)}
+              <option value="OK">✅ OK</option>
+              <option value="NO">❌ NO</option>
             </select>
           </div>
         </div>
 
-        <button type="submit" disabled={!codigoGenerado} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50">
-          REGISTRAR MATERIA BASE
+        <button 
+          type="submit" 
+          disabled={!codigoGenerado || loading} 
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? 'REGISTRANDO...' : 'REGISTRAR EN SUPABASE'}
         </button>
       </form>
     </div>

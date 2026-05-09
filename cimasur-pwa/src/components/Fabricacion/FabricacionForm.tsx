@@ -1,34 +1,37 @@
 import React, { useState } from 'react';
-import { db } from '../../lib/db';
+import { supabase } from '../../lib/supabase'; // Cliente directo de Supabase
+import { db } from '../../lib/db'; // Solo para lectura rápida de datos maestros
 import { useLiveQuery } from 'dexie-react-hooks';
 import { generateCode } from '../../lib/utils/codigos';
 
 export const FabricacionForm = () => {
-  // Selectores dinámicos desde Dexie
+  // Selectores dinámicos desde Dexie (Maestros sincronizados por SyncManager)
   const categorias = useLiveQuery(() => db.categoria_producto.toArray());
   const basesDisponibles = useLiveQuery(() => db.bases.toArray());
   const usuarios = useLiveQuery(() => db.perfiles.toArray());
+
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  const [loteGenerado, setLoteGenerado] = useState('');
 
   const [formData, setFormData] = useState({
     categoria_id: '',
     producto: '',
     cantidad_frascos: '',
-    base_salina_id: '', // FK a Bases
+    base_id: '', // Nombre de columna corregido según Supabase
     ingrediente_activo: '',
     temperatura: '',
     responsable_id: '',
-    qa: 'true',
+    qa: 'OK', // Cambiado a texto plano según tu requerimiento
     observaciones: '',
   });
 
-  const [loteGenerado, setLoteGenerado] = useState('');
-
-  // Lógica para generar el código de lote (Prefijo Categoría + AñoMes + Correlativo)
   const handleGenerateLote = async () => {
-    if (!formData.categoria_id) return alert("Seleccione una categoría primero");
+    if (!formData.categoria_id) {
+      return setMensaje({ tipo: 'error', texto: "Seleccione una categoría primero" });
+    }
     const cat = categorias?.find(c => String(c.id) === String(formData.categoria_id));
     if (cat) {
-      // Pasamos el prefijo (o las 3 primeras letras del nombre si no hay prefijo) y la tabla
       const prefijo = cat.prefijo || cat.nombre.substring(0, 3).toUpperCase();
       const nuevoLote = await generateCode(prefijo, 'fabricaciones');
       setLoteGenerado(nuevoLote);
@@ -36,84 +39,97 @@ export const FabricacionForm = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Evita que la página se recargue
+    e.preventDefault();
 
-    if (!loteGenerado) return alert("Debe generar el código de lote.");
-    if (!formData.categoria_id || !formData.base_salina_id || !formData.responsable_id) {
-      return alert("Faltan campos obligatorios para la trazabilidad.");
-    }
+    if (!loteGenerado) return setMensaje({ tipo: 'error', texto: "Debe generar el código de lote." });
+    
+    setLoading(true);
+    setMensaje({ tipo: '', texto: '' });
 
     try {
-      const nuevaFabricacion = {
-        codigo_lote: loteGenerado, // PK
-        categoria_id: formData.categoria_id,
-        producto: formData.producto,
-        cantidad_frascos: parseInt(formData.cantidad_frascos),
-        base_salina_id: formData.base_salina_id, // Link a la tabla Bases
-        ingrediente_activo: formData.ingrediente_activo,
-        temperatura: parseFloat(formData.temperatura),
-        responsable_id: formData.responsable_id,
-        qa: formData.qa === 'true',
-        observaciones: formData.observaciones || null,
-        fecha_registro: new Date().toISOString(),
-        synced: 0,
-        dirty: 1
-      };
+      // INSERCIÓN DIRECTA EN SUPABASE
+      const { error } = await supabase
+        .from('fabricaciones')
+        .insert([{
+          codigo_lote: loteGenerado,
+          categoria_id: formData.categoria_id,
+          producto: formData.producto,
+          cantidad_frascos: parseInt(formData.cantidad_frascos),
+          base_id: formData.base_id,
+          ingrediente_activo: formData.ingrediente_activo,
+          temperatura: parseFloat(formData.temperatura),
+          responsable_id: formData.responsable_id,
+          qa: formData.qa,
+          observaciones: formData.observaciones || null,
+          created_at: new Date().toISOString()
+        }]);
 
-      await db.fabricaciones.add(nuevaFabricacion);
+      if (error) throw error;
+
+      setMensaje({ tipo: 'success', texto: `✅ Lote ${loteGenerado} registrado con éxito en la nube.` });
       
-      alert(`✅ Lote ${loteGenerado} registrado con éxito.`);
-      window.location.href = '/dashboard';
-    } catch (error) {
+      // Limpiar formulario
+      setFormData({
+        categoria_id: '', producto: '', cantidad_frascos: '',
+        base_id: '', ingrediente_activo: '', temperatura: '',
+        responsable_id: '', qa: 'OK', observaciones: ''
+      });
+      setLoteGenerado('');
+
+    } catch (error: any) {
       console.error(error);
-      alert("❌ Error al registrar la fabricación. Verifique los datos.");
+      setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      {/* AQUÍ ESTÁ LA CORRECCIÓN PRINCIPAL: onSubmit={handleSubmit} */}
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
-        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-2 h-8 bg-purple-500 rounded-full"></span>
-          Proceso de Fabricación (Lote Final)
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span className="w-2 h-8 bg-purple-500 rounded-full"></span>
+            Proceso de Fabricación (Online)
+          </h2>
+          {loteGenerado && (
+            <div className="bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-lg font-mono font-bold text-purple-400">
+              {loteGenerado}
+            </div>
+          )}
+        </div>
+
+        {mensaje.texto && (
+          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            {mensaje.texto}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* IDENTIFICACIÓN DEL PRODUCTO */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Categoría de Producto</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Categoría *</label>
               <div className="flex gap-2">
                 <select 
+                  required
                   className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                   onChange={(e) => setFormData({...formData, categoria_id: e.target.value})}
                   value={formData.categoria_id}
                 >
-                  <option value="">Seleccione categoría...</option>
-                  {categorias?.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.prefijo || c.nombre.substring(0,3).toUpperCase()})</option>)}
+                  <option value="">Seleccione...</option>
+                  {categorias?.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
-                <button 
-                  type="button"
-                  onClick={handleGenerateLote}
-                  className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold text-xs"
-                >
-                  GENERAR LOTE
+                <button type="button" onClick={handleGenerateLote} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold text-xs">
+                  GENERAR
                 </button>
               </div>
-              {loteGenerado && (
-                <p className="mt-2 text-purple-400 font-mono text-sm font-bold bg-purple-500/10 p-2 rounded border border-purple-500/20 text-center">
-                  LOTE: {loteGenerado}
-                </p>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Nombre del Producto</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Nombre del Producto *</label>
               <input 
-                type="text"
-                placeholder="Ej: Suero Fisiológico"
+                required type="text"
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                 onChange={(e) => setFormData({...formData, producto: e.target.value})}
                 value={formData.producto}
@@ -121,16 +137,16 @@ export const FabricacionForm = () => {
             </div>
           </div>
 
-          {/* COMPOSICIÓN Y CANTIDAD */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Base Salina Utilizada</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Base de Origen *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, base_salina_id: e.target.value})}
-                value={formData.base_salina_id}
+                onChange={(e) => setFormData({...formData, base_id: e.target.value})}
+                value={formData.base_id}
               >
-                <option value="">Seleccione Base (Código)...</option>
+                <option value="">Seleccione Base...</option>
                 {basesDisponibles?.map(b => <option key={b.codigo} value={b.codigo}>{b.codigo}</option>)}
               </select>
             </div>
@@ -140,16 +156,16 @@ export const FabricacionForm = () => {
                 <label className="block text-sm font-medium text-slate-400 mb-1">Cant. Frascos</label>
                 <input 
                   type="number"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
                   onChange={(e) => setFormData({...formData, cantidad_frascos: e.target.value})}
                   value={formData.cantidad_frascos}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Temperatura (°C)</label>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Temp. (°C)</label>
                 <input 
                   type="number" step="0.1"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
                   onChange={(e) => setFormData({...formData, temperatura: e.target.value})}
                   value={formData.temperatura}
                 />
@@ -157,41 +173,40 @@ export const FabricacionForm = () => {
             </div>
           </div>
 
-          {/* INGREDIENTES Y RESPONSABLE */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Ingrediente Activo</label>
               <input 
                 type="text"
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
                 onChange={(e) => setFormData({...formData, ingrediente_activo: e.target.value})}
                 value={formData.ingrediente_activo}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable de Mezcla</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                 onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
                 value={formData.responsable_id}
               >
-                <option value="">Seleccione responsable...</option>
+                <option value="">Seleccione...</option>
                 {usuarios?.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
               </select>
             </div>
           </div>
 
-          {/* QA Y OBSERVACIONES */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Estado QA</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Estado QA *</label>
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                 onChange={(e) => setFormData({...formData, qa: e.target.value})}
                 value={formData.qa}
               >
-                <option value="true">✅ OK (Aprobado)</option>
-                <option value="false">❌ NO (Rechazado)</option>
+                <option value="OK">✅ OK (Aprobado)</option>
+                <option value="NO">❌ NO (Rechazado)</option>
               </select>
             </div>
             <div>
@@ -208,9 +223,10 @@ export const FabricacionForm = () => {
 
         <button 
           type="submit"
-          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95"
+          disabled={!loteGenerado || loading}
+          className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          REGISTRAR FABRICACIÓN
+          {loading ? 'REGISTRANDO EN LA NUBE...' : 'REGISTRAR FABRICACIÓN'}
         </button>
       </form>
     </div>

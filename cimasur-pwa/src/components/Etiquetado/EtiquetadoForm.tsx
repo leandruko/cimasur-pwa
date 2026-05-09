@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { db } from '../../lib/db';
+import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
+import { db } from '../../lib/db'; // Para lectura rápida de lotes y responsables
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export const EtiquetadoForm = () => {
-  // Selectores dinámicos
+  // Obtenemos los datos maestros de la memoria local para rapidez
   const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
   const usuarios = useLiveQuery(() => db.perfiles.toArray());
 
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+
   const [formData, setFormData] = useState({
-    lote_id: '', // Relación 1:1 con Fabricacion.codigo_lote
+    lote_id: '', 
     cantidad_etiquetada: '',
     vencimiento_etiqueta: '',
-    qa: 'true',
+    qa: 'OK', // Cambiado a formato de texto OK/NO
     responsable_id: '',
   });
 
@@ -19,49 +23,68 @@ export const EtiquetadoForm = () => {
     e.preventDefault();
 
     if (!formData.lote_id || !formData.responsable_id) {
-      return alert("Debe seleccionar un lote y un responsable para el registro.");
+      return setMensaje({ tipo: 'error', texto: "Debe seleccionar un lote y un responsable." });
     }
 
-    try {
-      const nuevoEtiquetado = {
-        lote_id: formData.lote_id, // Primary Key (1:1 con Fabricacion)
-        cantidad_etiquetada: parseInt(formData.cantidad_etiquetada) || 0,
-        vencimiento_etiqueta: formData.vencimiento_etiqueta,
-        qa: formData.qa === 'true',
-        responsable_id: formData.responsable_id,
-        fecha_registro: new Date().toISOString(),
-        synced: 0,
-        dirty: 1
-      };
+    setLoading(true);
+    setMensaje({ tipo: '', texto: '' });
 
-      // Usamos .put para cumplir con el comportamiento OneToOne de Django (update or create)
-      await db.etiquetados.put(nuevoEtiquetado);
+    try {
+      // INSERCIÓN O ACTUALIZACIÓN DIRECTA EN SUPABASE
+      // Usamos .upsert para manejar la relación 1:1 con el lote
+      const { error } = await supabase
+        .from('etiquetados')
+        .upsert([{
+          lote_id: formData.lote_id,
+          cantidad_etiquetada: parseInt(formData.cantidad_etiquetada) || 0,
+          vencimiento_etiqueta: formData.vencimiento_etiqueta,
+          qa: formData.qa,
+          responsable_id: formData.responsable_id,
+          created_at: new Date().toISOString()
+        }], { onConflict: 'lote_id' });
+
+      if (error) throw error;
+
+      setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito en la nube.` });
       
-      alert(`✅ Etiquetado del lote ${formData.lote_id} registrado correctamente.`);
-      window.location.href = '/dashboard';
-    } catch (error) {
+      // Limpiar formulario
+      setFormData({
+        lote_id: '',
+        cantidad_etiquetada: '',
+        vencimiento_etiqueta: '',
+        qa: 'OK',
+        responsable_id: '',
+      });
+
+    } catch (error: any) {
       console.error(error);
-      alert("❌ Error al registrar el etiquetado.");
+      setMensaje({ tipo: 'error', texto: `❌ Error al guardar en Supabase: ${error.message}` });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      {/* CORRECCIÓN: Agregado onSubmit={handleSubmit} */}
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
-          Control de Etiquetado y QA Final
+          Control de Etiquetado y QA Final (Online)
         </h2>
+
+        {mensaje.texto && (
+          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            {mensaje.texto}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* SELECCIÓN DE LOTE Y RESPONSABLE */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Lote a Etiquetar</label>
-              {/* CORRECCIÓN: Agregado value={formData.lote_id} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Lote a Etiquetar *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
                 value={formData.lote_id}
@@ -76,9 +99,9 @@ export const EtiquetadoForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable del Proceso</label>
-              {/* CORRECCIÓN: Agregado value={formData.responsable_id} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
                 value={formData.responsable_id}
@@ -89,12 +112,10 @@ export const EtiquetadoForm = () => {
             </div>
           </div>
 
-          {/* DATOS TÉCNICOS DEL ETIQUETADO */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Cant. Etiquetada</label>
-                {/* CORRECCIÓN: Agregado value={formData.cantidad_etiquetada} */}
                 <input 
                   type="number"
                   placeholder="0"
@@ -105,7 +126,6 @@ export const EtiquetadoForm = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Venc. Etiqueta</label>
-                {/* CORRECCIÓN: Agregado value={formData.vencimiento_etiqueta} */}
                 <input 
                   type="date"
                   className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
@@ -116,26 +136,25 @@ export const EtiquetadoForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Validación QA (Etiqueta/Envase)</label>
-              {/* CORRECCIÓN: Agregado value={formData.qa} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Validación QA *</label>
               <select 
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
                 onChange={(e) => setFormData({...formData, qa: e.target.value})}
                 value={formData.qa}
               >
-                <option value="true">✅ OK (Aprobado)</option>
-                <option value="false">❌ NO (Rechazado)</option>
+                <option value="OK">✅ OK (Aprobado)</option>
+                <option value="NO">❌ NO (Rechazado)</option>
               </select>
             </div>
           </div>
-
         </div>
 
         <button 
           type="submit"
-          className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95"
+          disabled={loading}
+          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          FINALIZAR ETIQUETADO Y APROBAR QA
+          {loading ? 'SINCRONIZANDO...' : 'FINALIZAR ETIQUETADO Y APROBAR QA'}
         </button>
       </form>
     </div>

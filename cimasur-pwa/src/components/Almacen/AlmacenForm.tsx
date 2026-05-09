@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { db } from '../../lib/db';
+import { supabase } from '../../lib/supabase'; // Conexión directa
+import { db } from '../../lib/db'; // Para leer responsables y lotes rápido
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export const AlmacenForm = () => {
-  // Obtenemos los lotes fabricados y los usuarios para los selectores
+  // Seguimos leyendo de Dexie para que los selectores carguen al instante (offline-ready para lectura)
   const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
   const usuarios = useLiveQuery(() => db.perfiles.toArray());
 
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+
   const [formData, setFormData] = useState({
-    lote_id: '', // Relación 1:1 con Fabricacion.codigo_lote
+    lote_id: '', 
     ubicacion: '',
     temperatura_verificada: '',
     responsable_id: '',
@@ -18,48 +22,66 @@ export const AlmacenForm = () => {
     e.preventDefault();
 
     if (!formData.lote_id || !formData.responsable_id || !formData.ubicacion) {
-      return alert("Debe seleccionar un lote, una ubicación y un responsable.");
+      return setMensaje({ tipo: 'error', texto: "Debe completar los campos obligatorios." });
     }
 
-    try {
-      const nuevoAlmacen = {
-        lote_id: formData.lote_id, // Usamos el código del lote como ID
-        ubicacion: formData.ubicacion,
-        temperatura_verificada: parseFloat(formData.temperatura_verificada) || 0,
-        responsable_id: formData.responsable_id,
-        fecha_registro: new Date().toISOString(),
-        synced: 0,
-        dirty: 1
-      };
+    setLoading(true);
+    setMensaje({ tipo: '', texto: '' });
 
-      // Al ser 1:1, usamos .put para que si ya existe, se actualice (comportamiento Django)
-      await db.almacenamientos.put(nuevoAlmacen);
+    try {
+      // INSERCIÓN O ACTUALIZACIÓN DIRECTA EN SUPABASE
+      // Usamos .upsert porque el almacenamiento suele ser 1:1 con el lote
+      const { error } = await supabase
+        .from('almacenamientos')
+        .upsert([{
+          lote_id: formData.lote_id,
+          ubicacion: formData.ubicacion,
+          temperatura_verificada: parseFloat(formData.temperatura_verificada) || 0,
+          responsable_id: formData.responsable_id,
+          created_at: new Date().toISOString()
+        }], { onConflict: 'lote_id' }); // Si el lote ya tiene ubicación, se actualiza
+
+      if (error) throw error;
+
+      setMensaje({ tipo: 'success', texto: `✅ Lote ${formData.lote_id} almacenado correctamente en la nube.` });
       
-      alert(`✅ Ubicación del lote ${formData.lote_id} registrada con éxito.`);
-      window.location.href = '/dashboard';
-    } catch (error) {
+      // Limpiar formulario
+      setFormData({
+        lote_id: '',
+        ubicacion: '',
+        temperatura_verificada: '',
+        responsable_id: '',
+      });
+
+    } catch (error: any) {
       console.error(error);
-      alert("❌ Error al registrar el almacenamiento.");
+      setMensaje({ tipo: 'error', texto: `❌ Error en Supabase: ${error.message}` });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      {/* CORRECCIÓN: Agregado onSubmit={handleSubmit} */}
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
-          Ingreso a Almacenamiento
+          Ingreso a Almacenamiento (Online)
         </h2>
+
+        {mensaje.texto && (
+          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            {mensaje.texto}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* SELECCIÓN DE LOTE */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Lote Fabricado</label>
-              {/* CORRECCIÓN: Agregado value={formData.lote_id} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Lote Fabricado *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
                 value={formData.lote_id}
@@ -71,13 +93,12 @@ export const AlmacenForm = () => {
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-slate-500 mt-1 italic font-mono uppercase">Solo lotes registrados en fabricación</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable del Ingreso</label>
-              {/* CORRECCIÓN: Agregado value={formData.responsable_id} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
               <select 
+                required
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
                 onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
                 value={formData.responsable_id}
@@ -88,12 +109,11 @@ export const AlmacenForm = () => {
             </div>
           </div>
 
-          {/* DATOS DE UBICACIÓN Y CONTROL */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Ubicación Física (Bodega/Estante)</label>
-              {/* CORRECCIÓN: Agregado value={formData.ubicacion} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Ubicación Física *</label>
               <input 
+                required
                 type="text"
                 placeholder="Ej: Bodega Central - Sector A1"
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
@@ -103,8 +123,7 @@ export const AlmacenForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Temperatura Verificada (°C)</label>
-              {/* CORRECCIÓN: Agregado value={formData.temperatura_verificada} */}
+              <label className="block text-sm font-medium text-slate-400 mb-1">Temperatura (°C)</label>
               <input 
                 type="number"
                 step="0.1"
@@ -115,14 +134,14 @@ export const AlmacenForm = () => {
               />
             </div>
           </div>
-
         </div>
 
         <button 
           type="submit"
-          className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95"
+          disabled={loading}
+          className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50"
         >
-          REGISTRAR UBICACIÓN Y CONTROL
+          {loading ? 'CONECTANDO CON NUBE...' : 'REGISTRAR ALMACENAMIENTO'}
         </button>
       </form>
     </div>

@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { db } from '../../lib/db';
+import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
+import { db } from '../../lib/db'; // Para leer lotes fabricados de la memoria local
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export const ReclamoForm = () => {
+  // Obtenemos los lotes para vincular el reclamo
   const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
+
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
 
   const [formData, setFormData] = useState({
     lote_id: '',
     cliente: '',
-    tipo_reclamo: 'Reacción adversa', // Antes era tipo_problema
-    descripcion: '',                // Antes era detalles
+    tipo_reclamo: 'Reacción adversa',
+    descripcion: '',
     estado: 'Abierto'
   });
 
@@ -17,32 +22,47 @@ export const ReclamoForm = () => {
     e.preventDefault();
 
     if (!formData.lote_id || !formData.descripcion) {
-      return alert("El lote y la descripción son obligatorios.");
+      return setMensaje({ tipo: 'error', texto: "El lote y la descripción son obligatorios." });
     }
 
-    try {
-      const nuevoReclamo = {
-        id: crypto.randomUUID(),
-        lote_id: formData.lote_id,
-        cliente: formData.cliente,
-        tipo_reclamo: formData.tipo_reclamo, // Mismo nombre que en Searcher
-        descripcion: formData.descripcion,   // Mismo nombre que en Searcher
-        estado: formData.estado,
-        fecha: new Date().toLocaleDateString(), // Fecha legible para el PDF
-        fecha_registro: new Date().toISOString(),
-        synced: 0,
-        dirty: 1
-      };
+    setLoading(true);
+    setMensaje({ tipo: '', texto: '' });
 
-      await db.reclamos.add(nuevoReclamo);
+    try {
+      // INSERCIÓN DIRECTA EN SUPABASE
+      const { error } = await supabase
+        .from('reclamos')
+        .insert([{
+          id: crypto.randomUUID(),
+          lote_id: formData.lote_id,
+          cliente: formData.cliente,
+          tipo_reclamo: formData.tipo_reclamo,
+          descripcion: formData.descripcion,
+          estado: formData.estado,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      setMensaje({ 
+        tipo: 'success', 
+        texto: `✅ Reclamo registrado con éxito para el lote ${formData.lote_id}.` 
+      });
       
-      alert(`✅ Reclamo registrado con éxito para el lote ${formData.lote_id}.`);
-      
-      // Limpiar formulario o redirigir
-      window.location.href = '/dashboard';
-    } catch (error) {
+      // Limpiar formulario
+      setFormData({
+        lote_id: '',
+        cliente: '',
+        tipo_reclamo: 'Reacción adversa',
+        descripcion: '',
+        estado: 'Abierto'
+      });
+
+    } catch (error: any) {
       console.error(error);
-      alert("❌ Error al registrar el reclamo en la base de datos local.");
+      setMensaje({ tipo: 'error', texto: `❌ Error al guardar reclamo: ${error.message}` });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,8 +71,14 @@ export const ReclamoForm = () => {
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <span className="w-2 h-8 bg-red-500 rounded-full"></span>
-          Gestión de Reclamos e Incidencias
+          Gestión de Reclamos e Incidencias (Online)
         </h2>
+
+        {mensaje.texto && (
+          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            {mensaje.texto}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -68,7 +94,7 @@ export const ReclamoForm = () => {
                 <option value="">Seleccione el lote...</option>
                 {fabricaciones?.map(f => (
                   <option key={f.codigo_lote} value={f.codigo_lote}>
-                    {f.codigo_lote}
+                    {f.codigo_lote} - {f.producto}
                   </option>
                 ))}
               </select>
@@ -77,7 +103,7 @@ export const ReclamoForm = () => {
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Cliente que Reporta</label>
               <input 
-                type="text" required
+                type="text" 
                 placeholder="Nombre o Institución"
                 className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
                 onChange={(e) => setFormData({...formData, cliente: e.target.value})}
@@ -119,8 +145,9 @@ export const ReclamoForm = () => {
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-400 mb-1">Descripción de la Incidencia *</label>
             <textarea 
-              required rows={4}
-              placeholder="Describa detalladamente el problema..."
+              required 
+              rows={4}
+              placeholder="Describa detalladamente el problema reportado..."
               className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
               onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
               value={formData.descripcion}
@@ -130,9 +157,10 @@ export const ReclamoForm = () => {
 
         <button 
           type="submit"
-          className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95"
+          disabled={loading}
+          className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          REGISTRAR RECLAMO / INCIDENCIA
+          {loading ? 'ENVIANDO REPORTE...' : 'REGISTRAR RECLAMO / INCIDENCIA'}
         </button>
       </form>
     </div>
