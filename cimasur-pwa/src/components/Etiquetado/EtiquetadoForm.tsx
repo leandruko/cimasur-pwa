@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
-import { db } from '../../lib/db'; // Para lectura rápida de lotes y responsables
+import React, { useState, useEffect } from 'react'; // Añadimos useEffect
+import { supabase } from '../../lib/supabase'; // Conexión directa
+import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
+import { RefreshCw, Loader2, Tag } from 'lucide-react';
 
 export const EtiquetadoForm = () => {
-  // Obtenemos los datos maestros de la memoria local para rapidez
-  const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
+  // 1. Usuarios desde Dexie
   const usuarios = useLiveQuery(() => db.perfiles.toArray());
 
+  // 2. Estados para la carga online de lotes
+  const [lotesOnline, setLotesOnline] = useState<any[]>([]);
+  const [loadingLotes, setLoadingLotes] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
 
@@ -15,9 +18,32 @@ export const EtiquetadoForm = () => {
     lote_id: '', 
     cantidad_etiquetada: '',
     vencimiento_etiqueta: '',
-    qa: 'OK', // Cambiado a formato de texto OK/NO
+    qa: 'OK', 
     responsable_id: '',
   });
+
+  // 3. FUNCIÓN PARA TRAER LOTES DESDE SUPABASE
+  const fetchLotesOnline = async () => {
+    setLoadingLotes(true);
+    try {
+      const { data, error } = await supabase
+        .from('fabricaciones')
+        .select('codigo_lote, producto')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setLotesOnline(data);
+    } catch (err: any) {
+      console.error("Error cargando lotes para etiquetado:", err.message);
+    } finally {
+      setLoadingLotes(false);
+    }
+  };
+
+  // Carga automática inicial
+  useEffect(() => {
+    fetchLotesOnline();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +56,6 @@ export const EtiquetadoForm = () => {
     setMensaje({ tipo: '', texto: '' });
 
     try {
-      // INSERCIÓN O ACTUALIZACIÓN DIRECTA EN SUPABASE
-      // Usamos .upsert para manejar la relación 1:1 con el lote
       const { error } = await supabase
         .from('etiquetados')
         .upsert([{
@@ -45,9 +69,8 @@ export const EtiquetadoForm = () => {
 
       if (error) throw error;
 
-      setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito en la nube.` });
+      setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito.` });
       
-      // Limpiar formulario
       setFormData({
         lote_id: '',
         cantidad_etiquetada: '',
@@ -57,8 +80,7 @@ export const EtiquetadoForm = () => {
       });
 
     } catch (error: any) {
-      console.error(error);
-      setMensaje({ tipo: 'error', texto: `❌ Error al guardar en Supabase: ${error.message}` });
+      setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
     } finally {
       setLoading(false);
     }
@@ -68,12 +90,14 @@ export const EtiquetadoForm = () => {
     <div className="max-w-4xl mx-auto p-4">
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
+          <Tag className="text-emerald-500" />
           Control de Etiquetado y QA Final (Online)
         </h2>
 
         {mensaje.texto && (
-          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          <div className={`p-4 rounded-xl border animate-in fade-in ${
+            mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}>
             {mensaje.texto}
           </div>
         )}
@@ -82,20 +106,28 @@ export const EtiquetadoForm = () => {
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Lote a Etiquetar *</label>
-              <select 
-                required
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
-                value={formData.lote_id}
-              >
-                <option value="">Seleccione lote...</option>
-                {fabricaciones?.map(f => (
-                  <option key={f.codigo_lote} value={f.codigo_lote}>
-                    {f.codigo_lote} - {f.producto}
-                  </option>
-                ))}
-              </select>
+              <label className="flex justify-between text-sm font-medium text-slate-400 mb-1">
+                <span>Lote a Etiquetar *</span>
+                {loadingLotes && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+              </label>
+              <div className="flex gap-2">
+                <select 
+                  required
+                  className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+                  onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+                  value={formData.lote_id}
+                >
+                  <option value="">{loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}</option>
+                  {lotesOnline.map(f => (
+                    <option key={f.codigo_lote} value={f.codigo_lote}>
+                      {f.codigo_lote} - {f.producto}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={fetchLotesOnline} className="bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-colors">
+                  <RefreshCw size={16} className={loadingLotes ? "animate-spin" : ""} />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -154,7 +186,11 @@ export const EtiquetadoForm = () => {
           disabled={loading}
           className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? 'SINCRONIZANDO...' : 'FINALIZAR ETIQUETADO Y APROBAR QA'}
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" /> SINCRONIZANDO...
+            </>
+          ) : 'FINALIZAR ETIQUETADO Y APROBAR QA'}
         </button>
       </form>
     </div>

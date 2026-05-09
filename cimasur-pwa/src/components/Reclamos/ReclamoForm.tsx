@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
-import { db } from '../../lib/db'; // Para leer lotes fabricados de la memoria local
-import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../lib/db'; 
+import { RefreshCw, Loader2, AlertTriangle } from 'lucide-react';
 
 export const ReclamoForm = () => {
-  // Obtenemos los lotes para vincular el reclamo
-  const fabricaciones = useLiveQuery(() => db.fabricaciones.toArray());
-
+  // 1. Estados para los lotes traídos de la nube
+  const [lotesOnline, setLotesOnline] = useState<any[]>([]);
+  const [loadingLotes, setLoadingLotes] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
 
@@ -18,6 +18,29 @@ export const ReclamoForm = () => {
     estado: 'Abierto'
   });
 
+  // 2. FUNCIÓN PARA TRAER LOTES DE FABRICACIÓN DESDE LA NUBE
+  const fetchLotesOnline = async () => {
+    setLoadingLotes(true);
+    try {
+      const { data, error } = await supabase
+        .from('fabricaciones')
+        .select('codigo_lote, producto')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setLotesOnline(data);
+    } catch (err: any) {
+      console.error("Error cargando lotes para reclamos:", err.message);
+    } finally {
+      setLoadingLotes(false);
+    }
+  };
+
+  // Carga automática inicial
+  useEffect(() => {
+    fetchLotesOnline();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -26,18 +49,20 @@ export const ReclamoForm = () => {
     }
 
     setLoading(true);
-    setMensaje({ tipo: '', texto: '' });
-
     try {
-      // INSERCIÓN DIRECTA EN SUPABASE
       const { error } = await supabase
         .from('reclamos')
         .insert([{
           id: crypto.randomUUID(),
           lote_id: formData.lote_id,
           cliente: formData.cliente,
-          tipo_reclamo: formData.tipo_reclamo,
-          descripcion: formData.descripcion,
+          
+          // 1. Cambiamos 'tipo_reclamo' por 'tipo_problema' (según el error anterior)
+          tipo_problema: formData.tipo_reclamo, 
+          
+          // 2. CAMBIO ACTUAL: Cambiamos 'descripcion' por 'detalles'
+          detalles: formData.descripcion, 
+          
           estado: formData.estado,
           created_at: new Date().toISOString()
         }]);
@@ -46,21 +71,17 @@ export const ReclamoForm = () => {
 
       setMensaje({ 
         tipo: 'success', 
-        texto: `✅ Reclamo registrado con éxito para el lote ${formData.lote_id}.` 
+        texto: `✅ Reclamo registrado con éxito.` 
       });
       
-      // Limpiar formulario
+      // Limpiar formulario...
       setFormData({
-        lote_id: '',
-        cliente: '',
-        tipo_reclamo: 'Reacción adversa',
-        descripcion: '',
-        estado: 'Abierto'
+        lote_id: '', cliente: '', tipo_reclamo: 'Reacción adversa',
+        descripcion: '', estado: 'Abierto'
       });
 
     } catch (error: any) {
-      console.error(error);
-      setMensaje({ tipo: 'error', texto: `❌ Error al guardar reclamo: ${error.message}` });
+      setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
     } finally {
       setLoading(false);
     }
@@ -70,12 +91,14 @@ export const ReclamoForm = () => {
     <div className="max-w-4xl mx-auto p-4">
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-2 h-8 bg-red-500 rounded-full"></span>
+          <AlertTriangle className="text-red-500" />
           Gestión de Reclamos e Incidencias (Online)
         </h2>
 
         {mensaje.texto && (
-          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          <div className={`p-4 rounded-xl border animate-in fade-in ${
+            mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}>
             {mensaje.texto}
           </div>
         )}
@@ -84,20 +107,28 @@ export const ReclamoForm = () => {
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Lote Relacionado *</label>
-              <select 
-                required
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
-                onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
-                value={formData.lote_id}
-              >
-                <option value="">Seleccione el lote...</option>
-                {fabricaciones?.map(f => (
-                  <option key={f.codigo_lote} value={f.codigo_lote}>
-                    {f.codigo_lote} - {f.producto}
-                  </option>
-                ))}
-              </select>
+              <label className="flex justify-between text-sm font-medium text-slate-400 mb-1">
+                <span>Lote Relacionado *</span>
+                {loadingLotes && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+              </label>
+              <div className="flex gap-2">
+                <select 
+                  required
+                  className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
+                  onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+                  value={formData.lote_id}
+                >
+                  <option value="">{loadingLotes ? 'Cargando lotes...' : 'Seleccione el lote...'}</option>
+                  {lotesOnline.map(f => (
+                    <option key={f.codigo_lote} value={f.codigo_lote}>
+                      {f.codigo_lote} - {f.producto}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={fetchLotesOnline} className="bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-colors">
+                  <RefreshCw size={16} className={loadingLotes ? "animate-spin" : ""} />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -160,7 +191,11 @@ export const ReclamoForm = () => {
           disabled={loading}
           className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? 'ENVIANDO REPORTE...' : 'REGISTRAR RECLAMO / INCIDENCIA'}
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" /> ENVIANDO REPORTE...
+            </>
+          ) : 'REGISTRAR RECLAMO / INCIDENCIA'}
         </button>
       </form>
     </div>
