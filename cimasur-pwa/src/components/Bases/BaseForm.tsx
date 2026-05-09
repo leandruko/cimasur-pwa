@@ -20,7 +20,7 @@ export const BaseForm = () => {
     cantidad: '',
     concentracion: '',
     fecha_elaboracion: '',
-    fecha_vencimiento: '',
+    vencimiento: '',
     responsable_id: '',
     qa: 'OK' // Cambiado a valor directo OK/NO
   });
@@ -59,7 +59,7 @@ export const BaseForm = () => {
           cantidad: Number(formData.cantidad),
           concentracion: formData.concentracion,
           fecha_elaboracion: formData.fecha_elaboracion,
-          fecha_vencimiento: formData.fecha_vencimiento,
+          vencimiento: formData.vencimiento,
           responsable_id: formData.responsable_id,
           qa: formData.qa
         }]);
@@ -71,7 +71,7 @@ export const BaseForm = () => {
       // Limpiar formulario
       setFormData({
         tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
-        concentracion: '', fecha_elaboracion: '', fecha_vencimiento: '',
+        concentracion: '', fecha_elaboracion: '', vencimiento: '',
         responsable_id: '', qa: 'OK'
       });
       setCodigoGenerado('');
@@ -167,7 +167,7 @@ export const BaseForm = () => {
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1">Fecha Vencimiento</label>
             <input type="date" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-              value={formData.fecha_vencimiento} onChange={(e) => setFormData({...formData, fecha_vencimiento: e.target.value})}
+              value={formData.vencimiento} onChange={(e) => setFormData({...formData,vencimiento: e.target.value})}
             />
           </div>
 
