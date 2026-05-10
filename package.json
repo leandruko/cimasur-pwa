@@ -17,13 +17,13 @@
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vite-pwa/astro": "^0.7.1",
+    "@vite-pwa/astro": "^0.1.6", 
     "lucide-react": "^0.453.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"
-  },
+},
   "engines": {
     "node": ">=22.12.0"
   }
