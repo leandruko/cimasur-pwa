@@ -4,12 +4,12 @@ import AstroPWA from '@vite-pwa/astro';
 import tailwindv4 from '@tailwindcss/vite'; // Importamos el plugin de Vite
 import node from '@astrojs/node';
 
+import vercel from '@astrojs/vercel';
+
 export default defineConfig({
   // Necesitas un adaptador para usar 'server'
   output: 'server',
-  adapter: node({
-    mode: 'standalone',
-  }),
+  adapter: vercel(),
   integrations: [
     react(), 
     // Eliminamos tailwind() de aquí

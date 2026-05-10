@@ -28,12 +28,6 @@ export const AdminPanel = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl flex items-center gap-4">
-        <ShieldAlert className="text-red-500 shrink-0" size={24} />
-        <p className="text-red-200 text-sm italic">
-          Bienvenido al Panel de Control Crítico. Las modificaciones aquí realizadas afectan la integridad de la base de datos central.
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {menuItems.map((item, i) => (

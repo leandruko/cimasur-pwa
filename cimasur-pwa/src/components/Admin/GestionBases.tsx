@@ -1,33 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Beaker, Save, Loader2, Trash2, RefreshCw } from 'lucide-react';
+import { Beaker, Save, Loader2, Trash2, RefreshCw, Layers, Edit3, X, Check } from 'lucide-react';
 
 export const GestionBases = () => {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<any[]>([]);
-  const [form, setForm] = useState({ codigo: '', proveedor: '' });
+  const [form, setForm] = useState({ nombre: '', prefijo: '' });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ nombre: '', prefijo: '' });
 
-  const fetchBases = async () => {
-    const { data } = await supabase.from('bases').select('*').order('created_at', { ascending: false });
+  const fetchTiposBase = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('tipo_base')
+      .select('*')
+      .order('nombre', { ascending: true });
     if (data) setItems(data);
+    setLoading(false);
   };
 
-  useEffect(() => { fetchBases(); }, []);
+  useEffect(() => { fetchTiposBase(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.nombre || !form.prefijo) return;
+
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('bases').insert([{
-        codigo: form.codigo.toUpperCase(),
-        proveedor: form.proveedor,
-        responsable_id: user?.id,
-        qa: 'OK'
-      }]);
+      const { error } = await supabase
+        .from('tipo_base')
+        .insert([{ 
+          nombre: form.nombre.trim(), 
+          prefijo: form.prefijo.trim().toUpperCase() 
+        }]);
+
       if (error) throw error;
-      setForm({ codigo: '', proveedor: '' });
-      fetchBases();
+      setForm({ nombre: '', prefijo: '' });
+      fetchTiposBase();
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -35,32 +44,129 @@ export const GestionBases = () => {
     }
   };
 
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditForm({ nombre: item.nombre, prefijo: item.prefijo });
+  };
+
+  const saveEdit = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('tipo_base')
+        .update({ 
+          nombre: editForm.nombre.trim(), 
+          prefijo: editForm.prefijo.trim().toUpperCase() 
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      setEditingId(null);
+      fetchTiposBase();
+    } catch (err: any) {
+      alert("Error al actualizar: " + err.message);
+    }
+  };
+
+  const eliminarTipo = async (id: number) => {
+    if (!confirm('¿Seguro que deseas eliminar este tipo de base?')) return;
+    const { error } = await supabase.from('tipo_base').delete().eq('id', id);
+    if (!error) fetchTiposBase();
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h2 className="text-2xl font-black text-white flex items-center gap-2">
-        <Beaker className="text-purple-500" /> GESTIÓN DE BASES
-      </h2>
-
-      <form onSubmit={handleSubmit} className="bg-slate-900 p-6 rounded-3xl border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input required placeholder="CÓDIGO (BS-01)" className="bg-slate-800 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500" value={form.codigo} onChange={e => setForm({...form, codigo: e.target.value})} />
-        <input required placeholder="PROVEEDOR" className="bg-slate-800 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500" value={form.proveedor} onChange={e => setForm({...form, proveedor: e.target.value})} />
-        <button disabled={loading} className="bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 transition-all flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="animate-spin" /> : <><Save size={18}/> GUARDAR</>}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-black text-white flex items-center gap-2">
+          <Beaker className="text-purple-500" /> GESTIÓN DE TIPOS DE BASE
+        </h2>
+        <button onClick={fetchTiposBase} className="p-2 text-slate-500 hover:text-white transition-colors">
+          <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
         </button>
-      </form>
+      </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
+      {/* FORMULARIO DE CREACIÓN */}
+      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-1">
+            <input 
+              required 
+              placeholder="NOMBRE (Ej: Salina)" 
+              className="w-full bg-slate-800 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500" 
+              value={form.nombre} 
+              onChange={e => setForm({...form, nombre: e.target.value})} 
+            />
+          </div>
+          <div className="md:col-span-1">
+            <input 
+              required 
+              maxLength={3}
+              placeholder="PREFIJO (Ej: BS)" 
+              className="w-full bg-slate-800 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500" 
+              value={form.prefijo} 
+              onChange={e => setForm({...form, prefijo: e.target.value})} 
+            />
+          </div>
+          <button disabled={loading} className="bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
+            {loading ? <Loader2 className="animate-spin" /> : <><Save size={18}/> REGISTRAR</>}
+          </button>
+        </form>
+      </div>
+
+      {/* TABLA DE GESTIÓN */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
         <table className="w-full text-left text-sm text-slate-300">
-          <thead className="bg-slate-800 text-[10px] uppercase text-slate-500">
-            <tr><th className="p-4">Código</th><th className="p-4">Proveedor</th><th className="p-4 text-right">Acción</th></tr>
+          <thead className="bg-slate-800/50 text-[10px] uppercase text-slate-500 font-black tracking-widest">
+            <tr>
+              <th className="p-5">Prefijo</th>
+              <th className="p-5">Nombre del Tipo de Base</th>
+              <th className="p-5 text-right">Acciones</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {items.map(item => (
-              <tr key={item.codigo} className="hover:bg-slate-800/50">
-                <td className="p-4 font-mono font-bold text-white">{item.codigo}</td>
-                <td className="p-4">{item.proveedor}</td>
-                <td className="p-4 text-right">
-                  <button onClick={async () => { if(confirm('¿Eliminar?')) { await supabase.from('bases').delete().eq('codigo', item.codigo); fetchBases(); } }} className="text-red-500/50 hover:text-red-500"><Trash2 size={16}/></button>
+              <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
+                <td className="p-5">
+                  {editingId === item.id ? (
+                    <input 
+                      className="bg-slate-700 p-1 rounded text-white w-16 uppercase font-mono" 
+                      value={editForm.prefijo}
+                      onChange={e => setEditForm({...editForm, prefijo: e.target.value})}
+                    />
+                  ) : (
+                    <span className="font-mono font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded">{item.prefijo}</span>
+                  )}
+                </td>
+                <td className="p-5 uppercase font-bold text-white">
+                  {editingId === item.id ? (
+                    <input 
+                      className="bg-slate-700 p-1 rounded text-white w-full" 
+                      value={editForm.nombre}
+                      onChange={e => setEditForm({...editForm, nombre: e.target.value})}
+                    />
+                  ) : (
+                    item.nombre
+                  )}
+                </td>
+                <td className="p-5 text-right flex justify-end gap-2">
+                  {editingId === item.id ? (
+                    <>
+                      <button onClick={() => saveEdit(item.id)} className="text-green-500 hover:bg-green-500/10 p-2 rounded-lg">
+                        <Check size={18} />
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="text-slate-400 hover:bg-slate-500/10 p-2 rounded-lg">
+                        <X size={18} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => startEdit(item)} className="text-blue-500/50 hover:text-blue-500 p-2 rounded-lg hover:bg-blue-500/10">
+                        <Edit3 size={18} />
+                      </button>
+                      <button onClick={() => eliminarTipo(item.id)} className="text-red-500/30 hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10">
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
