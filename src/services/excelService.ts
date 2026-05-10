@@ -1,8 +1,13 @@
-import * as XLSX from 'xlsx';
 import dayjs from 'dayjs';
 
-export const exportOrdenesToExcel = (ordenes: any[]) => {
-  // 1. Formatear datos para el Excel
+export const exportOrdenesToExcel = async (ordenes: any[]) => {
+  // Evitamos que se ejecute en el servidor de Vercel
+  if (typeof window === 'undefined') return;
+
+  // Importación dinámica: Solo carga la librería en el navegador del cliente
+  const XLSX = await import('xlsx');
+
+  // 1. Formatear datos
   const dataMap = ordenes.map(o => ({
     "ID Orden": o.id.slice(0, 8),
     "Cliente": o.cliente,

@@ -1,12 +1,15 @@
-import { jsPDF } from 'jspdf';
 import dayjs from 'dayjs';
 
-export const generateTrazabilidadPDF = (orden: any) => {
+export const generateTrazabilidadPDF = async (orden: any) => {
+  // Evitamos que se ejecute en el servidor de Vercel
+  if (typeof window === 'undefined') return;
+
+  // Importación dinámica de jsPDF
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
-  const blueIndustrial = '#2563eb';
 
   // --- PÁGINA 1: RESUMEN TÉCNICO ---
-  doc.setFillColor(30, 41, 59); // Slate 800
+  doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 40, 'F');
   
   doc.setTextColor(255, 255, 255);
@@ -26,7 +29,6 @@ export const generateTrazabilidadPDF = (orden: any) => {
   doc.text(`Fecha Registro: ${dayjs(orden.created_at).format('DD/MM/YYYY HH:mm')}`, 15, 90);
   doc.text(`Estado: ${orden.estado.toUpperCase()}`, 15, 100);
 
-  // Sección de Observaciones
   doc.setFontSize(12);
   doc.text('Observaciones del Laboratorio:', 15, 120);
   doc.setFontSize(10);
@@ -39,10 +41,9 @@ export const generateTrazabilidadPDF = (orden: any) => {
   doc.text('Validación y Firmas', 15, 20);
   doc.line(15, 22, 195, 22);
 
-  // Espacios para firmas
   doc.line(15, 80, 80, 80);
   doc.text('Firma Técnico Responsable', 15, 85);
-  doc.text(`ID: ${orden.tecnico_id.slice(0, 8)}`, 15, 90);
+  doc.text(`ID: ${orden.tecnico_id?.slice(0, 8) || 'N/A'}`, 15, 90);
 
   doc.line(120, 80, 185, 80);
   doc.text('Sello de Laboratorio', 120, 85);
