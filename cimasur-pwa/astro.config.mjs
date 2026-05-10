@@ -1,18 +1,24 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import AstroPWA from '@vite-pwa/astro';
-import tailwindv4 from '@tailwindcss/vite'; // Importamos el plugin de Vite
-import node from '@astrojs/node';
-
-import vercel from '@astrojs/vercel';
+import tailwindv4 from '@tailwindcss/vite';
+import vercel from '@astrojs/vercel'; // Solo necesitamos este
 
 export default defineConfig({
-  // Necesitas un adaptador para usar 'server'
+  // 'server' es necesario para Auth y SSR
   output: 'server',
-  adapter: vercel(),
+  
+  // Usamos el adaptador oficial de Vercel
+  adapter: vercel({
+    webAnalytics: {
+      enabled: true,
+    },
+    // Si tienes problemas con imágenes, puedes añadir:
+    // imagesConfig: { sizes: [320, 480, 640, 750, 828, 1080, 1200] }
+  }),
+
   integrations: [
     react(), 
-    // Eliminamos tailwind() de aquí
     AstroPWA({
       registerType: 'autoUpdate',
       injectRegister: 'script',
@@ -39,6 +45,7 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
+        start_url: '/', // Importante para PWA
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -47,7 +54,10 @@ export default defineConfig({
     }),
   ],
   vite: {
-    // Tailwind v4 se configura aquí como plugin de Vite
     plugins: [tailwindv4()],
+    // Recomendado para evitar problemas con dependencias grandes en Vercel
+    build: {
+      cssCodeSplit: true,
+    }
   },
 });
