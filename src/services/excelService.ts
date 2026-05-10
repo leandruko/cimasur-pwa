@@ -1,10 +1,10 @@
 import dayjs from 'dayjs';
 
 export const exportOrdenesToExcel = async (ordenes: any[]) => {
-  // 1. Evitar que corra en el servidor
+  // 1. Bloqueo para el servidor
   if (typeof window === 'undefined') return;
 
-  // 2. Importación dinámica (esto no rompe el build)
+  // 2. Importación dinámica (Vite la ignora en el build de servidor)
   const XLSX = await import('xlsx');
 
   const dataMap = ordenes.map(o => ({

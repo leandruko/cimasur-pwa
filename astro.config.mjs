@@ -60,7 +60,6 @@ export default defineConfig({
       },
       build: {
         cssCodeSplit: true,
-        chunkSizeWarningLimit: 1000,
       }
     },
 });

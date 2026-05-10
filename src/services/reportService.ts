@@ -1,12 +1,14 @@
 import dayjs from 'dayjs';
 
 export const generateTrazabilidadPDF = async (orden: any) => {
-  // 1. Evitar que corra en el servidor
+  // 1. Bloqueo para el servidor
   if (typeof window === 'undefined') return;
 
-  // 2. Importación dinámica
+  // 2. Importación dinámica de jsPDF
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
+  
+  const blueIndustrial = '#2563eb';
 
   // --- PÁGINA 1: RESUMEN TÉCNICO ---
   doc.setFillColor(30, 41, 59);
@@ -32,7 +34,8 @@ export const generateTrazabilidadPDF = async (orden: any) => {
   doc.setFontSize(12);
   doc.text('Observaciones del Laboratorio:', 15, 120);
   doc.setFontSize(10);
-  const splitTitle = doc.splitTextToSize(orden.detalles?.observaciones || 'Sin observaciones registradas.', 180);
+  const observaciones = orden.detalles?.observaciones || 'Sin observaciones registradas.';
+  const splitTitle = doc.splitTextToSize(observaciones, 180);
   doc.text(splitTitle, 15, 130);
 
   // --- PÁGINA 2: HISTORIAL Y FIRMAS ---
