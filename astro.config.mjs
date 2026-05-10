@@ -53,22 +53,14 @@ export default defineConfig({
   ],
 
   vite: {
-    plugins: [tailwindv4()],
-    build: {
-      cssCodeSplit: true,
-      // Evita que Rollup se confunda con las librerías de navegador
-      rollupOptions: {
-        external: ['jspdf', 'xlsx'],
+      plugins: [tailwindv4()],
+      ssr: {
+        // Forzamos a que estas librerías NO se procesen en el servidor
+        external: ['jspdf', 'xlsx', 'dexie'],
+      },
+      build: {
+        cssCodeSplit: true,
+        chunkSizeWarningLimit: 1000,
       }
     },
-    // ESTA PARTE ES CRÍTICA:
-    // Evita que Astro intente procesar estas librerías en el lado del servidor (SSR)
-    ssr: {
-      external: ['jspdf', 'xlsx', 'dexie'],
-      noExternal: ['dayjs', 'lucide-react']
-    },
-    optimizeDeps: {
-      exclude: ['jspdf', 'xlsx']
-    }
-  },
 });

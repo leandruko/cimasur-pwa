@@ -1,10 +1,10 @@
 import dayjs from 'dayjs';
 
 export const generateTrazabilidadPDF = async (orden: any) => {
-  // Evitamos que se ejecute en el servidor de Vercel
+  // 1. Evitar que corra en el servidor
   if (typeof window === 'undefined') return;
 
-  // Importación dinámica de jsPDF
+  // 2. Importación dinámica
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
 
