@@ -116,21 +116,41 @@ export const MasterDataAdmin = () => {
 };
 
 // --- SUB-COMPONENTE: FORMULARIO BASES ---
+// --- SUB-COMPONENTE: FORMULARIO BASES ---
 const FormBase = ({ onSave }: { onSave: () => void }) => {
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ codigo: '', proveedor: '', responsable_id: '811f5859-0097-4848-bc69-231317a3a992' });
+  const [form, setForm] = useState({ codigo: '', proveedor: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('bases').insert([form]);
-    if (!error) {
+
+    try {
+      // OBTENEMOS EL USUARIO ACTUAL DE LA SESIÓN
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Sesión expirada. Por favor, inicie sesión de nuevo.");
+        return;
+      }
+
+      const { error } = await supabase.from('bases').insert([{
+        codigo: form.codigo,
+        proveedor: form.proveedor,
+        responsable_id: user.id, // <--- EL ID SE SACA DE LA SESIÓN, NO DEL CÓDIGO
+        created_at: new Date().toISOString()
+      }]);
+
+      if (error) throw error;
+
       onSave();
-      setForm({ ...form, codigo: '', proveedor: '' });
-    } else {
-      alert(error.message);
+      setForm({ codigo: '', proveedor: '' });
+      alert("Base guardada exitosamente.");
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -138,20 +158,78 @@ const FormBase = ({ onSave }: { onSave: () => void }) => {
       <h3 className="text-white font-bold text-sm uppercase mb-2">Añadir Nueva Base</h3>
       <input
         required
-        placeholder="Código de Base (Ej: BS-001)"
+        placeholder="Código de Base"
         className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
         value={form.codigo}
         onChange={(e) => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
       />
       <input
         required
-        placeholder="Nombre del Proveedor"
+        placeholder="Proveedor"
         className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
         value={form.proveedor}
         onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
       />
       <button disabled={loading} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
-        {loading ? <Loader2 className="animate-spin" /> : <><Save size={18} /> GUARDAR BASE</>}
+        {loading ? <Loader2 className="animate-spin" /> : 'GUARDAR BASE'}
+      </button>
+    </form>
+  );
+};
+
+// --- SUB-COMPONENTE: FORMULARIO BASES ---
+const FormBase = ({ onSave }: { onSave: () => void }) => {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ codigo: '', proveedor: '' });
+
+// Dentro de FormBase en MasterDataAdmin.tsx
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Si no hay usuario, lanzamos error antes de intentar guardar
+    if (!user) throw new Error("Debe estar autenticado");
+
+    const { error } = await supabase.from('bases').insert([{
+      codigo: form.codigo,
+      proveedor: form.proveedor,
+      responsable_id: user.id, // ID dinámico del admin actual
+      qa: 'OK' // Valor por defecto
+    }]);
+
+    if (error) throw error;
+
+    onSave();
+    alert("✅ Base guardada");
+  } catch (err: any) {
+    alert("❌ Error: " + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+      <h3 className="text-white font-bold text-sm uppercase mb-2">Añadir Nueva Base</h3>
+      <input
+        required
+        placeholder="Código de Base"
+        className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
+        value={form.codigo}
+        onChange={(e) => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
+      />
+      <input
+        required
+        placeholder="Proveedor"
+        className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
+        value={form.proveedor}
+        onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
+      />
+      <button disabled={loading} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
+        {loading ? <Loader2 className="animate-spin" /> : 'GUARDAR BASE'}
       </button>
     </form>
   );
@@ -165,22 +243,32 @@ const FormCategoria = ({ onSave }: { onSave: () => void }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('categoria_producto').insert([form]);
-    if (!error) {
+
+    try {
+      const { error } = await supabase.from('categoria_producto').insert([{
+        nombre: form.nombre,
+        prefijo: form.prefijo.toUpperCase(),
+        created_at: new Date().toISOString()
+      }]);
+
+      if (error) throw error;
+
       onSave();
       setForm({ nombre: '', prefijo: '' });
-    } else {
-      alert(error.message);
+      alert("Categoría guardada exitosamente.");
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
-      <h3 className="text-white font-bold text-sm uppercase mb-2">Nueva Categoría de Producto</h3>
+      <h3 className="text-white font-bold text-sm uppercase mb-2">Nueva Categoría</h3>
       <input
         required
-        placeholder="Nombre (Ej: Suero Fisiológico)"
+        placeholder="Nombre"
         className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
         value={form.nombre}
         onChange={(e) => setForm({ ...form, nombre: e.target.value })}
@@ -188,13 +276,13 @@ const FormCategoria = ({ onSave }: { onSave: () => void }) => {
       <input
         required
         maxLength={3}
-        placeholder="Prefijo (Ej: SUR)"
+        placeholder="Prefijo (SUR)"
         className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
         value={form.prefijo}
-        onChange={(e) => setForm({ ...form, prefijo: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, prefijo: e.target.value })}
       />
       <button disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
-        {loading ? <Loader2 className="animate-spin" /> : <><Save size={18} /> GUARDAR CATEGORÍA</>}
+        {loading ? <Loader2 className="animate-spin" /> : 'GUARDAR CATEGORÍA'}
       </button>
     </form>
   );

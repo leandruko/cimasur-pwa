@@ -1,72 +1,65 @@
-// src/components/Admin/UserAdmin.tsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { db } from '../../lib/db';
+import { Users, UserPlus, ShieldCheck, Loader2 } from 'lucide-react';
 
 export const UserAdmin = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [formData, setFormData] = useState({ email: '', password: '', nombre: '' });
+  const [loading, setLoading] = useState(false);
+  const [userForm, setUserForm] = useState({ email: '', password: '', nombre: '' });
 
-  useEffect(() => {
-    // Cargamos los usuarios existentes para ver a quiénes podemos elegir luego
-    const fetch = async () => {
-      const { data } = await supabase.from('perfiles').select('*');
-      if (data) setUsuarios(data);
-    };
-    fetch();
-  }, []);
+  const loadUsers = async () => {
+    const { data } = await supabase.from('perfiles').select('*').order('nombre_completo');
+    if (data) setUsuarios(data);
+  };
 
-  const crearUsuario = async (e: React.FormEvent) => {
+  useEffect(() => { loadUsers(); }, []);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Esto registra al usuario en el sistema de Auth de Supabase
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: { data: { nombre_completo: formData.nombre } }
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email: userForm.email,
+      password: userForm.password,
+      options: { data: { nombre_completo: userForm.nombre, cargo: 'Trabajador' } }
     });
-
-    if (error) alert("Error al crear: " + error.message);
+    
+    if (error) alert(error.message);
     else {
-      alert("Usuario creado. Ahora aparecerá en los listados de responsables.");
-      setFormData({ email: '', password: '', nombre: '' });
+      alert("Trabajador registrado.");
+      setUserForm({ email: '', password: '', nombre: '' });
+      loadUsers();
     }
+    setLoading(false);
   };
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={crearUsuario} className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-4">
-        <h3 className="text-blue-500 font-bold">Registrar nuevo trabajador</h3>
-        <input 
-          type="text" placeholder="Nombre Completo (como aparecerá en Responsables)" 
-          className="w-full bg-slate-800 p-2 rounded border border-slate-700"
-          value={formData.nombre}
-          onChange={e => setFormData({...formData, nombre: e.target.value})}
-        />
-        <input 
-          type="email" placeholder="Correo" 
-          className="w-full bg-slate-800 p-2 rounded border border-slate-700"
-          value={formData.email}
-          onChange={e => setFormData({...formData, email: e.target.value})}
-        />
-        <input 
-          type="password" placeholder="Contraseña inicial" 
-          className="w-full bg-slate-800 p-2 rounded border border-slate-700"
-          value={formData.password}
-          onChange={e => setFormData({...formData, password: e.target.value})}
-        />
-        <button className="bg-blue-600 w-full py-2 rounded font-bold">CREAR USUARIO</button>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-3 mb-8">
+        <Users className="text-green-500" size={32} />
+        <h2 className="text-2xl font-black text-white uppercase italic">Control de Personal</h2>
+      </div>
+
+      <form onSubmit={handleCreateUser} className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input required placeholder="Nombre Completo" className="bg-slate-800 p-4 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500" value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} />
+          <input required type="email" placeholder="Email" className="bg-slate-800 p-4 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
+          <input required type="password" placeholder="Contraseña" className="bg-slate-800 p-4 rounded-xl text-white outline-none focus:ring-2 focus:ring-green-500 md:col-span-2" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
+        </div>
+        <button disabled={loading} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-4 rounded-xl flex justify-center items-center gap-2">
+          {loading ? <Loader2 className="animate-spin" /> : <><UserPlus size={20}/> REGISTRAR ACCESO</>}
+        </button>
       </form>
 
-      <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-        <h4 className="text-slate-400 text-xs mb-4 uppercase font-bold">Trabajadores en el sistema</h4>
-        <ul className="space-y-2">
-          {usuarios.map(u => (
-            <li key={u.id} className="text-sm text-slate-300 border-b border-slate-800 pb-2 flex justify-between">
-              <span>{u.nombre_completo}</span>
-              <span className="text-slate-500 text-xs">{u.email}</span>
-            </li>
-          ))}
-        </ul>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {usuarios.map(u => (
+          <div key={u.id} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex justify-between items-center">
+            <div>
+              <p className="font-bold text-white uppercase text-sm">{u.nombre_completo}</p>
+              <p className="text-xs text-slate-500 font-mono italic">{u.email}</p>
+            </div>
+            <ShieldCheck className="text-slate-700" size={20} />
+          </div>
+        ))}
       </div>
     </div>
   );

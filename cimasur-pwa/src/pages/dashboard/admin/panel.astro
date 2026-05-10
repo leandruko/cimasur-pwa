@@ -1,10 +1,63 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import { AdminPanel } from '../../../components/Admin/AdminPanel';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 ---
 
-<Layout title="Admin Panel | CIMASUR">
-  <main class="min-h-screen bg-black">
-    <AdminPanel client:load />
+<Layout title="Panel de Control | CIMASUR">
+  <main class="min-h-screen bg-[#050505] text-white selection:bg-blue-500/30">
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+      <div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
+    </div>
+
+    <div class="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
+      
+      <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+        <div class="space-y-2">
+          <h1 class="text-4xl md:text-5xl font-black tracking-tighter italic uppercase">
+            Panel <span class="text-blue-600">Admin</span>
+          </h1>
+          <p class="text-slate-500 text-sm font-medium max-w-md">
+            Consola central para la gestión de infraestructura, usuarios y trazabilidad maestra de CIMASUR.
+          </p>
+        </div>
+
+        <div>
+          <a 
+            href="/dashboard" 
+            class="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-6 py-3 rounded-2xl transition-all active:scale-95 shadow-xl"
+          >
+            <ArrowLeft size={18} className="text-slate-400 group-hover:-translate-x-1 transition-transform" />
+            <span class="font-bold text-sm">VOLVER AL INICIO</span>
+          </a>
+        </div>
+      </header>
+
+      <section class="animate-in fade-in slide-in-from-bottom-6 duration-700">
+        <AdminPanel client:load />
+      </section>
+
+      <footer class="mt-20 pt-8 border-t border-slate-900 flex justify-center">
+        <div class="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+      </footer>
+    </div>
   </main>
 </Layout>
+
+<style>
+  /* Personalización de la barra de desplazamiento para un look más moderno */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #050505;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+</style>
