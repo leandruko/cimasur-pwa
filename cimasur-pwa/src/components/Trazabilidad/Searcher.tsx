@@ -272,7 +272,7 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
                     <tr key={i} className="border-b border-slate-100 italic">
                       <td className="py-3 font-medium">{v.cliente}</td>
                       <td className="py-3 text-[10px]">{v.tipo_venta}</td>
-                      <td className="py-3 text-right font-black">{v.cantidad_vendida} UDS</td>
+                      <td className="py-3 text-right font-black">{v.cantidad_vendida} Unidades</td>
                     </tr>
                   )) : (
                     <tr><td colSpan={3} className="py-8 text-center text-slate-400 italic">No se registran despachos para este lote.</td></tr>
