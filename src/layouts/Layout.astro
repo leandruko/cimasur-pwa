@@ -1,5 +1,4 @@
 ---
-import { pwaInfo } from 'virtual:pwa-info';
 import { SyncManager } from '../components/SyncManager'; // Importante importar
 import '../styles/global.css';
 
@@ -16,7 +15,6 @@ const { title } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <title>{title} | Cimasur</title>
-    {pwaInfo && <script src="/src/pwa.ts"></script>}
   </head>
   <body class="bg-slate-950 text-slate-50 min-h-screen">
     
