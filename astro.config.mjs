@@ -55,7 +55,6 @@ export default defineConfig({
   vite: {
       plugins: [tailwindv4()],
       ssr: {
-        // Forzamos a que estas librerías NO se procesen en el servidor
         external: ['jspdf', 'xlsx', 'dexie'],
       },
       build: {
