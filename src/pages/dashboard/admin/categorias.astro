@@ -3,5 +3,5 @@ import Layout from '../../../layouts/Layout.astro';
 import { GestionCategorias } from '../../../components/Admin/GestionCategorias';
 ---
 <Layout title="Categorias | Admin">
-  <div class="p-4"><GestionCategorias client:load /></div>
+  <div class="p-4"><GestionCategorias client:only="react" /></div>
 </Layout>
