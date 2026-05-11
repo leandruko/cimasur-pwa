@@ -38,14 +38,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // 5. Protección adicional para rutas de ADMIN
   if (isAdminRoute) {
-    // Consultamos el perfil en la tabla de perfiles de Supabase
     const { data: profile } = await supabase
       .from("perfiles")
-      .select("rol")
+      .select("cargo")
       .eq("id", session.user.id)
       .single();
 
-    if (profile?.rol !== "administrador") {
+    if (profile?.cargo !== "administrador") {
       return redirect("/dashboard"); // Usuario normal intentando entrar a admin
     }
   }
