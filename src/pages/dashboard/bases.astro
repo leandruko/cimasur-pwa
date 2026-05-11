@@ -14,7 +14,7 @@ import { AuthProvider } from '../../components/AuthProvider';
           <p class="text-slate-400">Complete los datos para generar el código de trazabilidad inicial.</p>
         </header>
         
-        <BaseForm client:load />
+        <BaseForm client:only="react" />
       </div>
     </DashboardShell>
   </AuthProvider>
