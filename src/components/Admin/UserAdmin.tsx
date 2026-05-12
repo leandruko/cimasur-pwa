@@ -15,26 +15,37 @@ export const UserAdmin = () => {
   useEffect(() => { loadUsers(); }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: userForm.email,
-      password: userForm.password,
-      options: { 
-        data: { 
-          nombre_completo: userForm.nombre, 
-          cargo: 'Trabajador' 
-        } 
+      e.preventDefault();
+      setLoading(true);
+      
+      try {
+        // Consumimos nuestra API Route interna protegida
+        const response = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userForm.email,
+            password: userForm.password,
+            nombre: userForm.nombre
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Error al registrar el personal");
+        }
+
+        alert("Trabajador registrado exitosamente.");
+        setUserForm({ email: '', password: '', nombre: '' });
+        loadUsers(); // Recargamos la lista
+      } catch (err: any) {
+        alert(err.message);
+      } finally {
+        setLoading(false);
       }
-    });
-    
-    if (error) alert(error.message);
-    else {
-      alert("Trabajador registrado exitosamente.");
-      setUserForm({ email: '', password: '', nombre: '' });
-      loadUsers();
-    }
-    setLoading(false);
   };
 
   // NUEVA: Función para cambiar el cargo
