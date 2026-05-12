@@ -5,14 +5,12 @@ import { Loader2, ShieldAlert } from 'lucide-react';
 export const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAdmin, loading } = useAdminAuth();
 
-  useEffect(() => {
-    if (!loading && isAdmin === false) {
-      // Si no es admin, lo redirigimos tras 3 segundos o inmediatamente
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 3000);
-    }
-  }, [isAdmin, loading]);
+    useEffect(() => {
+      if (!loading && isAdmin === false) {
+        // Redirección inmediata sin ventanas de exposición
+        window.location.replace('/dashboard');
+      }
+    }, [isAdmin, loading]);
 
   if (loading) {
     return (

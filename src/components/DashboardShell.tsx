@@ -54,9 +54,12 @@ export const DashboardShell = ({ children, title }: { children: React.ReactNode,
             }
           }
           
-          if (profile) {
-            setUserProfile(profile);
-          }
+// Dentro del useEffect, donde cargas el perfil
+            if (profile) {
+              setUserProfile(profile);
+              // Log para debuguear: abre la consola del navegador y mira qué cargo llega
+              console.log("Cargo del usuario en Sidebar:", profile.cargo); 
+            }
 
           // 3. ✨ MAGIA AQUÍ: Disparamos la descarga de datos maestros silenciosamente
           pullMasterData();
@@ -69,8 +72,7 @@ export const DashboardShell = ({ children, title }: { children: React.ReactNode,
     loadProfile();
   }, []);
 
-  // Lógica de acceso: Validamos si es Administrador para mostrar el menú
-  const isAdmin = userProfile?.cargo === 'Administrador';
+const isAdmin = userProfile?.cargo?.toLowerCase().trim() === 'administrador';
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 
 export const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -13,8 +13,22 @@ export const LoginForm = () => {
     setError(null);
 
     try {
-      await login(email, password);
-      window.location.href = '/dashboard';
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data.session) {
+        const maxAge = 60 * 60 * 24 * 7; 
+        
+        // Samesite=Lax y Secure son importantes para que Vercel no las bloquee
+        document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${maxAge}; SameSite=Lax; secure`;
+        document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; SameSite=Lax; secure`;
+
+        window.location.href = '/dashboard';
+      }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {

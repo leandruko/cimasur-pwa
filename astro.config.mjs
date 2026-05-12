@@ -5,7 +5,6 @@ import tailwindv4 from '@tailwindcss/vite';
 import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  // Mantenemos SSR para Auth y manejo de datos
   output: 'server',
   
   // Adaptador de Vercel con configuración estándar

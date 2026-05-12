@@ -116,7 +116,6 @@ export const MasterDataAdmin = () => {
 };
 
 // --- SUB-COMPONENTE: FORMULARIO BASES ---
-// --- SUB-COMPONENTE: FORMULARIO BASES ---
 const FormBase = ({ onSave }: { onSave: () => void }) => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ codigo: '', proveedor: '' });
@@ -152,64 +151,6 @@ const FormBase = ({ onSave }: { onSave: () => void }) => {
       setLoading(false);
     }
   };
-
-  return (
-    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
-      <h3 className="text-white font-bold text-sm uppercase mb-2">Añadir Nueva Base</h3>
-      <input
-        required
-        placeholder="Código de Base"
-        className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
-        value={form.codigo}
-        onChange={(e) => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
-      />
-      <input
-        required
-        placeholder="Proveedor"
-        className="w-full bg-slate-800 border-none text-white p-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
-        value={form.proveedor}
-        onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
-      />
-      <button disabled={loading} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
-        {loading ? <Loader2 className="animate-spin" /> : 'GUARDAR BASE'}
-      </button>
-    </form>
-  );
-};
-
-// --- SUB-COMPONENTE: FORMULARIO BASES ---
-const FormBase = ({ onSave }: { onSave: () => void }) => {
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ codigo: '', proveedor: '' });
-
-// Dentro de FormBase en MasterDataAdmin.tsx
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    // Si no hay usuario, lanzamos error antes de intentar guardar
-    if (!user) throw new Error("Debe estar autenticado");
-
-    const { error } = await supabase.from('bases').insert([{
-      codigo: form.codigo,
-      proveedor: form.proveedor,
-      responsable_id: user.id, // ID dinámico del admin actual
-      qa: 'OK' // Valor por defecto
-    }]);
-
-    if (error) throw error;
-
-    onSave();
-    alert("✅ Base guardada");
-  } catch (err: any) {
-    alert("❌ Error: " + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">

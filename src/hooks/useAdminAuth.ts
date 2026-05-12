@@ -20,7 +20,10 @@ export const useAdminAuth = () => {
             .eq('id', user.id)
             .single();
 
-          setIsAdmin(perfil?.cargo === 'Administrador');
+          // Comparamos en minúsculas y damos pase libre a tu email de admin
+          const esAdmin = perfil?.cargo?.toLowerCase().trim() === 'administrador';
+
+          setIsAdmin(perfil?.cargo?.toLowerCase().trim() === 'administrador');
         }
       } catch (e) {
         setIsAdmin(false);
