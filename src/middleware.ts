@@ -3,7 +3,9 @@ import { supabase } from "./lib/supabase";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { url, cookies, redirect } = context;
-
+  if (url.pathname === "/") {
+    return redirect("/login");
+  }
   // 1. Identificamos las rutas clave
   const isDashboardRoute = url.pathname.startsWith("/dashboard");
   const isAdminRoute = url.pathname.startsWith("/dashboard/admin");
