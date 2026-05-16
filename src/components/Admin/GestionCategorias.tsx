@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tag, Save, Loader2, Trash2, RefreshCw, Edit3, X, Check, ArrowLeft } from 'lucide-react';
+import { registrarAuditoria } from '../../services/auditService';
 
 export const GestionCategorias = () => {
   const [loading, setLoading] = useState(false);
@@ -23,20 +24,25 @@ export const GestionCategorias = () => {
 
   useEffect(() => { fetchCats(); }, []);
 
+  // 1. AUDITORÍA AL CREAR
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nombre || !form.prefijo) return;
 
     setLoading(true);
     try {
+      const nombreLimpio = form.nombre.trim();
+      const prefijoLimpio = form.prefijo.trim().toUpperCase();
+
       const { error } = await supabase
         .from('categoria_producto')
-        .insert([{ 
-          nombre: form.nombre.trim(), 
-          prefijo: form.prefijo.trim().toUpperCase() 
-        }]);
+        .insert([{ nombre: nombreLimpio, prefijo: prefijoLimpio }]);
 
       if (error) throw error;
+      
+      // 👉 REGISTRO DE CREACIÓN
+      await registrarAuditoria('CREAR', 'Categorías', `Se creó una nueva categoría: ${nombreLimpio} (${prefijoLimpio})`);
+
       setForm({ nombre: '', prefijo: '' });
       fetchCats();
     } catch (err: any) {
@@ -51,17 +57,22 @@ export const GestionCategorias = () => {
     setEditForm({ nombre: item.nombre, prefijo: item.prefijo });
   };
 
+  // 2. AUDITORÍA AL ACTUALIZAR
   const saveEdit = async (id: number) => {
     try {
+      const nombreLimpio = editForm.nombre.trim();
+      const prefijoLimpio = editForm.prefijo.trim().toUpperCase();
+
       const { error } = await supabase
         .from('categoria_producto')
-        .update({ 
-          nombre: editForm.nombre.trim(), 
-          prefijo: editForm.prefijo.trim().toUpperCase() 
-        })
+        .update({ nombre: nombreLimpio, prefijo: prefijoLimpio })
         .eq('id', id);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE ACTUALIZACIÓN
+      await registrarAuditoria('ACTUALIZAR', 'Categorías', `Se actualizó la categoría a: ${nombreLimpio} (${prefijoLimpio})`);
+
       setEditingId(null);
       fetchCats();
     } catch (err: any) {
@@ -69,10 +80,22 @@ export const GestionCategorias = () => {
     }
   };
 
+  // 3. AUDITORÍA AL ELIMINAR
   const eliminarCat = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
+    // Buscamos los datos de la categoría antes de eliminarla para guardarlos en el registro
+    const catSeleccionada = items.find(item => item.id === id);
+
+    if (!confirm(`¿Seguro que deseas eliminar la categoría ${catSeleccionada?.nombre}?`)) return;
+    
     const { error } = await supabase.from('categoria_producto').delete().eq('id', id);
-    if (!error) fetchCats();
+    
+    if (!error) {
+      // 👉 REGISTRO DE ELIMINACIÓN
+      await registrarAuditoria('ELIMINAR', 'Categorías', `Se eliminó la categoría: ${catSeleccionada?.nombre} (${catSeleccionada?.prefijo})`);
+      fetchCats();
+    } else {
+      alert("Error al eliminar: " + error.message);
+    }
   };
 
   return (

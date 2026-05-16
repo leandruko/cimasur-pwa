@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'; // Conexión directa
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, Loader2, Tag } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const EtiquetadoForm = () => {
   // 1. Usuarios desde Dexie
@@ -68,6 +70,13 @@ export const EtiquetadoForm = () => {
         }], { onConflict: 'lote_id' });
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA
+      await registrarAuditoria(
+        'ACTUALIZAR', 
+        'Etiquetado', 
+        `Se etiquetaron ${formData.cantidad_etiquetada || 0} unidades del lote ${formData.lote_id}. Estado QA: ${formData.qa}`
+      );
 
       setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito.` });
       

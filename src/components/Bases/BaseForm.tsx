@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'; // Importación directa de Supaba
 import { generarCodigoBase } from '../../lib/utils/codigos';
 import { useLiveQuery } from 'dexie-react-hooks'; 
 import { db } from '../../lib/db'; // Seguimos usando Dexie solo para leer datos maestros rápido
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const BaseForm = () => {
   // Mantenemos useLiveQuery solo para los selectores (mejora la velocidad de carga)
@@ -65,6 +67,15 @@ export const BaseForm = () => {
         }]);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA
+      // Buscamos el nombre del tipo de base para el registro
+      const tipoSeleccionado = tiposBase.find(t => String(t.id) === String(formData.tipo_id));
+      await registrarAuditoria(
+        'CREAR', 
+        'Materia Base', 
+        `Registró un nuevo lote de ${tipoSeleccionado?.nombre || 'Base'} (Código: ${codigoGenerado} | Cant: ${formData.cantidad})`
+      );
 
       setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente en la nube: ${codigoGenerado}` });
       

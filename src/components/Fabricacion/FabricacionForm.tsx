@@ -4,6 +4,8 @@ import { db } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { generateCode } from '../../lib/utils/codigos';
 import { RefreshCw, Loader2, Beaker } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const FabricacionForm = () => {
   // 1. Datos maestros locales (Categorías y Usuarios)
@@ -87,6 +89,13 @@ export const FabricacionForm = () => {
         }]);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA
+      await registrarAuditoria(
+        'CREAR', 
+        'Fabricación', 
+        `Registró nuevo lote de fabricación: ${loteGenerado} | Producto: ${formData.producto} (${formData.cantidad_frascos} frascos)`
+      );
 
       setMensaje({ tipo: 'success', texto: `✅ Lote ${loteGenerado} registrado con éxito.` });
       

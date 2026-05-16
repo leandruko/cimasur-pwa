@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, Loader2, Package } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const AlmacenForm = () => {
   // 1. Usuarios se mantienen de Dexie (cambian poco)
@@ -66,6 +68,13 @@ export const AlmacenForm = () => {
         }], { onConflict: 'lote_id' });
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA
+      await registrarAuditoria(
+        'ACTUALIZAR', 
+        'Almacén', 
+        `El lote ${formData.lote_id} fue almacenado en la ubicación: ${formData.ubicacion}`
+      );
 
       setMensaje({ tipo: 'success', texto: `✅ Lote ${formData.lote_id} almacenado correctamente.` });
       

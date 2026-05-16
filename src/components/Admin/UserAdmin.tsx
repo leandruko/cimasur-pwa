@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Users, UserPlus, ShieldCheck, Loader2, Trash2, ShieldAlert } from 'lucide-react';
+import { registrarAuditoria } from '../../services/auditService';
 
 export const UserAdmin = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -39,6 +40,7 @@ export const UserAdmin = () => {
         }
 
         alert("Trabajador registrado exitosamente.");
+        await registrarAuditoria('CREAR', 'Usuarios', `Se registró un nuevo trabajador con correo: ${userForm.email}`);
         setUserForm({ email: '', password: '', nombre: '' });
         loadUsers(); // Recargamos la lista
       } catch (err: any) {
@@ -49,7 +51,8 @@ export const UserAdmin = () => {
   };
 
   // NUEVA: Función para cambiar el cargo
-  const handleToggleCargo = async (id: string, currentCargo: string) => {
+// NUEVA: Función para cambiar el cargo CON AUDITORÍA
+  const handleToggleCargo = async (id: string, currentCargo: string, nombre: string) => {
     const nuevoCargo = currentCargo === 'administrador' ? 'Trabajador' : 'administrador';
     if (!confirm(`¿Cambiar cargo a ${nuevoCargo}?`)) return;
 
@@ -58,18 +61,28 @@ export const UserAdmin = () => {
       .update({ cargo: nuevoCargo })
       .eq('id', id);
 
-    if (error) alert(error.message);
-    else loadUsers();
+    if (error) {
+      alert(error.message);
+    } else {
+      // 👉 REGISTRAMOS LA AUDITORÍA DE ACTUALIZACIÓN
+      await registrarAuditoria('ACTUALIZAR', 'Usuarios', `Cambió el cargo de ${nombre} a ${nuevoCargo}`);
+      loadUsers();
+    }
   };
 
-  // NUEVA: Función para eliminar (Solo borra el perfil, el auth se maneja en Supabase)
-  const handleDelete = async (id: string) => {
+  // NUEVA: Función para eliminar CON AUDITORÍA
+  const handleDelete = async (id: string, nombre: string) => {
     if (!confirm("¿Estás seguro de eliminar este acceso? El usuario ya no podrá ver el dashboard.")) return;
     
     const { error } = await supabase.from('perfiles').delete().eq('id', id);
     
-    if (error) alert(error.message);
-    else loadUsers();
+    if (error) {
+      alert(error.message);
+    } else {
+      // 👉 REGISTRAMOS LA AUDITORÍA DE ELIMINACIÓN
+      await registrarAuditoria('ELIMINAR', 'Usuarios', `Eliminó el acceso del usuario: ${nombre}`);
+      loadUsers();
+    }
   };
 
   return (
@@ -110,14 +123,14 @@ export const UserAdmin = () => {
             
             <div className="flex gap-2">
               <button 
-                onClick={() => handleToggleCargo(u.id, u.cargo)}
+                onClick={() => handleToggleCargo(u.id, u.cargo, u.nombre_completo)}
                 className="p-2 hover:bg-blue-500/20 rounded-lg text-slate-400 hover:text-blue-500 transition-all"
                 title="Cambiar Rango"
               >
                 <ShieldAlert size={20} />
               </button>
               <button 
-                onClick={() => handleDelete(u.id)}
+                onClick={() => handleDelete(u.id, u.nombre_completo)}
                 className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-500 transition-all"
                 title="Eliminar Acceso"
               >

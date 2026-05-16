@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, Beaker, Tag, ShieldAlert, ArrowRight } from 'lucide-react';
+import { AuditLogs } from './AuditLogs';
 
 export const AdminPanel = () => {
   const menuItems = [
@@ -47,6 +48,9 @@ export const AdminPanel = () => {
           </a>
         ))}
       </div>
+      <div className="mt-8">
+        <AuditLogs />
+     </div>
     </div>
   );
 };

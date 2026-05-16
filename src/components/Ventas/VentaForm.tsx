@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, Loader2, ShoppingCart } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const VentaForm = () => {
   // 1. Estados para los lotes traídos de la nube
@@ -71,6 +73,13 @@ export const VentaForm = () => {
         }]);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA
+      await registrarAuditoria(
+        'CREAR', 
+        'Ventas', 
+        `Registró venta de ${formData.cantidad_vendida} unidades del lote ${formData.lote_id} al cliente: ${formData.cliente}`
+      );
 
       setMensaje({ 
         tipo: 'success', 

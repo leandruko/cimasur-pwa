@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
 import { db } from '../../lib/db'; 
 import { RefreshCw, Loader2, AlertTriangle } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const ReclamoForm = () => {
   // 1. Estados para los lotes traídos de la nube
@@ -56,18 +58,22 @@ export const ReclamoForm = () => {
           id: crypto.randomUUID(),
           lote_id: formData.lote_id,
           cliente: formData.cliente,
-          
-          // 1. Cambiamos 'tipo_reclamo' por 'tipo_problema' (según el error anterior)
+          // 1. Cambiamos 'tipo_reclamo' por 'tipo_problema'
           tipo_problema: formData.tipo_reclamo, 
-          
-          // 2. CAMBIO ACTUAL: Cambiamos 'descripcion' por 'detalles'
+          // 2. Cambiamos 'descripcion' por 'detalles'
           detalles: formData.descripcion, 
-          
           estado: formData.estado,
           created_at: new Date().toISOString()
         }]);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE AUDITORÍA CRÍTICA
+      await registrarAuditoria(
+        'CREAR', 
+        'Reclamos', 
+        `ALERTA: Se registró un reclamo de tipo "${formData.tipo_reclamo}" para el lote ${formData.lote_id}. Cliente: ${formData.cliente || 'No especificado'}`
+      );
 
       setMensaje({ 
         tipo: 'success', 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Beaker, Save, Loader2, Trash2, RefreshCw, Layers, Edit3, X, Check } from 'lucide-react';
+// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { registrarAuditoria } from '../../services/auditService';
 
 export const GestionBases = () => {
   const [loading, setLoading] = useState(false);
@@ -21,20 +23,28 @@ export const GestionBases = () => {
 
   useEffect(() => { fetchTiposBase(); }, []);
 
+  // 1. AUDITORÍA AL CREAR TIPO DE BASE
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nombre || !form.prefijo) return;
 
     setLoading(true);
     try {
+      const nombreLimpio = form.nombre.trim();
+      const prefijoLimpio = form.prefijo.trim().toUpperCase();
+
       const { error } = await supabase
         .from('tipo_base')
         .insert([{ 
-          nombre: form.nombre.trim(), 
-          prefijo: form.prefijo.trim().toUpperCase() 
+          nombre: nombreLimpio, 
+          prefijo: prefijoLimpio 
         }]);
 
       if (error) throw error;
+      
+      // 👉 REGISTRO DE CREACIÓN
+      await registrarAuditoria('CREAR', 'Tipos de Base', `Se registró el tipo de base: ${nombreLimpio} (${prefijoLimpio})`);
+
       setForm({ nombre: '', prefijo: '' });
       fetchTiposBase();
     } catch (err: any) {
@@ -49,17 +59,25 @@ export const GestionBases = () => {
     setEditForm({ nombre: item.nombre, prefijo: item.prefijo });
   };
 
+  // 2. AUDITORÍA AL ACTUALIZAR TIPO DE BASE
   const saveEdit = async (id: number) => {
     try {
+      const nombreLimpio = editForm.nombre.trim();
+      const prefijoLimpio = editForm.prefijo.trim().toUpperCase();
+
       const { error } = await supabase
         .from('tipo_base')
         .update({ 
-          nombre: editForm.nombre.trim(), 
-          prefijo: editForm.prefijo.trim().toUpperCase() 
+          nombre: nombreLimpio, 
+          prefijo: prefijoLimpio 
         })
         .eq('id', id);
 
       if (error) throw error;
+
+      // 👉 REGISTRO DE ACTUALIZACIÓN
+      await registrarAuditoria('ACTUALIZAR', 'Tipos de Base', `Se actualizó el tipo de base a: ${nombreLimpio} (${prefijoLimpio})`);
+
       setEditingId(null);
       fetchTiposBase();
     } catch (err: any) {
@@ -67,10 +85,22 @@ export const GestionBases = () => {
     }
   };
 
+  // 3. AUDITORÍA AL ELIMINAR TIPO DE BASE
   const eliminarTipo = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar este tipo de base?')) return;
+    // Buscamos el nombre del tipo de base antes de borrarlo
+    const baseSeleccionada = items.find(item => item.id === id);
+
+    if (!confirm(`¿Seguro que deseas eliminar el tipo de base ${baseSeleccionada?.nombre}?`)) return;
+    
     const { error } = await supabase.from('tipo_base').delete().eq('id', id);
-    if (!error) fetchTiposBase();
+    
+    if (!error) {
+      // 👉 REGISTRO DE ELIMINACIÓN
+      await registrarAuditoria('ELIMINAR', 'Tipos de Base', `Se eliminó el tipo de base: ${baseSeleccionada?.nombre} (${baseSeleccionada?.prefijo})`);
+      fetchTiposBase();
+    } else {
+       alert("Error al eliminar: " + error.message);
+    }
   };
 
   return (
@@ -170,6 +200,11 @@ export const GestionBases = () => {
                 </td>
               </tr>
             ))}
+             {items.length === 0 && !loading && (
+              <tr>
+                <td colSpan={3} className="p-10 text-center text-slate-600 italic">No hay tipos de base registrados.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
