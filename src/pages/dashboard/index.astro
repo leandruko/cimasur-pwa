@@ -9,12 +9,6 @@ import { AuthProvider } from '../../components/AuthProvider';
 <Layout title="Panel de Trazabilidad">
   <AuthProvider client:only="react">
     <DashboardShell title="Centro de Operaciones Cimasur" client:only="react">
-      <div class="mb-8 p-4 bg-blue-900/10 border border-blue-500/20 rounded-lg">
-        <p class="text-blue-400 text-sm">
-          <strong>Modo Operativo:</strong> Seleccione un módulo para iniciar un registro. 
-          Los datos se sincronizan automáticamente al detectar conexión.
-        </p>
-      </div>
       
       <GridActions client:only="react" />
     </DashboardShell>

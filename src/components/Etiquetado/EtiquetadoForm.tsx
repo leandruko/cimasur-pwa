@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react'; // Añadimos useEffect
-import { supabase } from '../../lib/supabase'; // Conexión directa
+import React, { useState, useEffect } from 'react'; 
+import { supabase } from '../../lib/supabase'; 
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, Loader2, Tag } from 'lucide-react';
-// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
 import { registrarAuditoria } from '../../services/auditService';
 
 export const EtiquetadoForm = () => {
@@ -42,7 +41,6 @@ export const EtiquetadoForm = () => {
     }
   };
 
-  // Carga automática inicial
   useEffect(() => {
     fetchLotesOnline();
   }, []);
@@ -71,7 +69,6 @@ export const EtiquetadoForm = () => {
 
       if (error) throw error;
 
-      // 👉 REGISTRO DE AUDITORÍA
       await registrarAuditoria(
         'ACTUALIZAR', 
         'Etiquetado', 
@@ -96,111 +93,135 @@ export const EtiquetadoForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
-        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <Tag className="text-emerald-500" />
-          Control de Etiquetado y QA Final (Online)
-        </h2>
+    <div className="w-full">
+      {/* TARJETA BLANCA CON REDONDEADO DE ALTA FIDELIDAD */}
+      <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+        
+        {/* CABECERA CON ICONO CIAN */}
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-6">
+          <div className="p-2 bg-cyan-50 rounded-xl">
+            <Tag className="text-cyan-500" size={20} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase">
+              Control de Etiquetado y QA Final
+            </h2>
+            <p className="text-slate-500 text-xs font-medium">
+              Gestione el empaque secundario y realice el visado de control de calidad final antes de su distribución.
+            </p>
+          </div>
+        </div>
 
+        {/* MENSAJES DE RESPUESTA */}
         {mensaje.texto && (
-          <div className={`p-4 rounded-xl border animate-in fade-in ${
-            mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+          <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
+            mensaje.tipo === 'success' 
+              ? 'bg-green-50 border-green-100 text-green-700' 
+              : 'bg-red-50 border-red-100 text-red-700'
           }`}>
             {mensaje.texto}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* CAMPOS CLAROS CON ESTILO DE ENFOQUE CIAN */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
-          <div className="space-y-4">
-            <div>
-              <label className="flex justify-between text-sm font-medium text-slate-400 mb-1">
-                <span>Lote a Etiquetar *</span>
-                {loadingLotes && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
-              </label>
-              <div className="flex gap-2">
-                <select 
-                  required
-                  className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                  onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
-                  value={formData.lote_id}
-                >
-                  <option value="">{loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}</option>
-                  {lotesOnline.map(f => (
-                    <option key={f.codigo_lote} value={f.codigo_lote}>
-                      {f.codigo_lote} - {f.producto}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={fetchLotesOnline} className="bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-colors">
-                  <RefreshCw size={16} className={loadingLotes ? "animate-spin" : ""} />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
+          {/* LOTE A ETIQUETAR */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span>Lote a Etiquetar *</span>
+              {loadingLotes && <Loader2 className="w-3 h-3 animate-spin text-cyan-500" />}
+            </label>
+            <div className="flex gap-2">
               <select 
                 required
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
-                value={formData.responsable_id}
+                className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+                onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
+                value={formData.lote_id}
               >
-                <option value="">Seleccione responsable...</option>
-                {usuarios?.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
+                <option value="" className="text-slate-400">{loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}</option>
+                {lotesOnline.map(f => (
+                  <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
+                    {f.codigo_lote} - {f.producto}
+                  </option>
+                ))}
               </select>
+              <button 
+                type="button" 
+                onClick={fetchLotesOnline} 
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-3 rounded-xl transition-colors border border-slate-200"
+              >
+                <RefreshCw size={16} className={loadingLotes ? "animate-spin text-cyan-500" : ""} />
+              </button>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Cant. Etiquetada</label>
-                <input 
-                  type="number"
-                  placeholder="0"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                  onChange={(e) => setFormData({...formData, cantidad_etiquetada: e.target.value})}
-                  value={formData.cantidad_etiquetada}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Venc. Etiqueta</label>
-                <input 
-                  type="date"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                  onChange={(e) => setFormData({...formData, vencimiento_etiqueta: e.target.value})}
-                  value={formData.vencimiento_etiqueta}
-                />
-              </div>
-            </div>
+          {/* RESPONSABLE */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Responsable *</label>
+            <select 
+              required
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+              onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+              value={formData.responsable_id}
+            >
+              <option value="" className="text-slate-400">Seleccione responsable...</option>
+              {usuarios?.map(u => <option key={u.id} value={u.id} className="text-slate-800 font-bold">{u.nombre_completo}</option>)}
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Validación QA *</label>
-              <select 
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-                onChange={(e) => setFormData({...formData, qa: e.target.value})}
-                value={formData.qa}
-              >
-                <option value="OK">✅ OK (Aprobado)</option>
-                <option value="NO">❌ NO (Rechazado)</option>
-              </select>
+          {/* CANTIDAD ETIQUETADA Y VENCIMIENTO */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cant. Etiquetada</label>
+              <input 
+                type="number"
+                placeholder="0"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium font-mono placeholder:text-slate-400"
+                onChange={(e) => setFormData({...formData, cantidad_etiquetada: e.target.value})}
+                value={formData.cantidad_etiquetada}
+              />
+            </div>
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Venc. Etiqueta</label>
+              <input 
+                type="date"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+                onChange={(e) => setFormData({...formData, vencimiento_etiqueta: e.target.value})}
+                value={formData.vencimiento_etiqueta}
+              />
             </div>
           </div>
+
+          {/* VALIDACIÓN QA */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Validación QA *</label>
+            <select 
+              className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-bold text-slate-800"
+              onChange={(e) => setFormData({...formData, qa: e.target.value})}
+              value={formData.qa}
+            >
+              <option value="OK" className="text-green-600 font-bold">✅ OK (Aprobado)</option>
+              <option value="NO" className="text-red-600 font-bold">❌ NO (Rechazado)</option>
+            </select>
+          </div>
+
         </div>
 
-        <button 
-          type="submit"
-          disabled={loading}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" /> SINCRONIZANDO...
-            </>
-          ) : 'FINALIZAR ETIQUETADO Y APROBAR QA'}
-        </button>
+        {/* BOTÓN CIAN INTEGRADO */}
+        <div className="pt-4 border-t border-slate-100">
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3.5 rounded-xl shadow-sm transition-all transform active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider text-xs"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={14} /> SINCRONIZANDO...
+              </>
+            ) : 'FINALIZAR ETIQUETADO Y APROBAR QA'}
+          </button>
+        </div>
       </form>
     </div>
   );

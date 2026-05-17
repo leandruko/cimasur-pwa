@@ -9,7 +9,6 @@ export const AuditLogs = () => {
 
   const fetchLogs = async () => {
     try {
-      // 1. Traemos SOLO las auditorías (sin JOIN para que no crashee)
       const { data: auditoriasData, error: audError } = await supabase
         .from('auditorias')
         .select('*')
@@ -19,10 +18,8 @@ export const AuditLogs = () => {
       if (audError) throw audError;
 
       if (auditoriasData && auditoriasData.length > 0) {
-        // 2. Extraemos todos los IDs de los usuarios únicos que hicieron acciones
         const userIds = [...new Set(auditoriasData.map(log => log.usuario_id).filter(Boolean))];
 
-        // 3. Traemos los nombres de esos usuarios desde la tabla perfiles
         let perfilesMap: Record<string, string> = {};
         if (userIds.length > 0) {
           const { data: perfilesData, error: perfError } = await supabase
@@ -31,14 +28,12 @@ export const AuditLogs = () => {
             .in('id', userIds);
 
           if (!perfError && perfilesData) {
-            // Creamos un diccionario { id: 'Nombre' } para buscar rápido
             perfilesData.forEach(p => {
               perfilesMap[p.id] = p.nombre_completo;
             });
           }
         }
 
-        // 4. Juntamos los datos: A cada registro le pegamos el nombre de su autor
         const logsConNombres = auditoriasData.map(log => ({
           ...log,
           nombre_autor: perfilesMap[log.usuario_id] || 'Usuario Desconocido'
@@ -46,7 +41,7 @@ export const AuditLogs = () => {
 
         setLogs(logsConNombres);
       } else {
-        setLogs([]); // Si está vacía, mostramos 0
+        setLogs([]);
       }
 
     } catch (err: any) {
@@ -60,58 +55,70 @@ export const AuditLogs = () => {
   useEffect(() => {
     fetchLogs();
     
-    // Suscripción en tiempo real (Opcional, pero se ve genial)
     const subscription = supabase
       .channel('auditorias_channel')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'auditorias' }, () => {
-        fetchLogs(); // Si alguien hace algo, recargamos la lista solitos
+        fetchLogs();
       })
       .subscribe();
 
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  if (loading) return <div className="text-slate-500 animate-pulse text-center p-8 border border-slate-800 rounded-3xl mt-8">Cargando historial de seguridad...</div>;
+  if (loading) return <div className="text-slate-400 animate-pulse text-center p-8 border border-slate-100 bg-white rounded-3xl mt-8 font-medium text-xs uppercase tracking-wider">Cargando historial de seguridad...</div>;
 
   if (errorMsg) return (
-    <div className="bg-red-950/30 border border-red-900 rounded-3xl p-6 flex items-center gap-4 text-red-500 mt-8">
-      <AlertTriangle size={32} />
+    <div className="bg-red-50 border border-red-100 rounded-2xl p-6 flex items-center gap-4 text-red-700 mt-8">
+      <AlertTriangle size={24} className="shrink-0 text-red-500" />
       <div>
-        <p className="font-bold">Error leyendo registros</p>
-        <p className="text-sm text-red-400">{errorMsg}</p>
+        <p className="font-bold text-sm uppercase tracking-wide">Error leyendo registros</p>
+        <p className="text-xs text-red-600/80 mt-0.5">{errorMsg}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl h-full flex flex-col mt-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Activity className="text-purple-500" size={24} />
-        <h3 className="text-xl font-black text-white uppercase italic">Registro de Actividad</h3>
+
+    <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm h-full flex flex-col mt-8">
+      
+      {/* CABECERA CON TEXTOS OSCUROS E ICONO CLARO */}
+      <div className="flex items-center gap-2.5 mb-6">
+        <div className="p-2 bg-cyan-50 rounded-xl">
+          <Activity className="text-cyan-500" size={20} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Registro de Actividad</h3>
+          <p className="text-[11px] text-slate-500 font-medium">Historial analítico y operaciones en tiempo real en la nube.</p>
+        </div>
       </div>
 
-      <div className="space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1 max-h-[400px]">
+      {/* LISTADO DE EVENTOS CON FILAS GRISES CLARAS */}
+      <div className="space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1 max-h-[400px]">
         {logs.map((log) => (
-          <div key={log.id} className="p-4 bg-slate-950/50 border border-slate-800/50 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-4 hover:border-slate-700 transition-colors">
+          <div key={log.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-4 hover:border-slate-200 transition-colors duration-300">
             
-            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider w-fit shrink-0
-              ${log.accion === 'CREAR' ? 'bg-green-500/10 text-green-400' : 
-                log.accion === 'ELIMINAR' ? 'bg-red-500/10 text-red-400' : 
-                'bg-blue-500/10 text-blue-400'}`}
+            {/* BADGES CONFIGURADOS PARA EL LOOK MÁS LIMPIO */}
+            <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest w-fit shrink-0 text-center border
+              ${log.accion === 'CREAR' ? 'bg-green-50 border-green-100 text-green-700' : 
+                log.accion === 'ELIMINAR' ? 'bg-red-50 border-red-100 text-red-700' : 
+                'bg-cyan-50 border-cyan-100 text-cyan-700'}`}
             >
               {log.accion}
             </div>
 
+            {/* DETALLES DE AUDITORÍA EN GRIS OSCURO */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-white font-medium truncate" title={log.detalles}>{log.detalles}</p>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                <span className="font-bold text-slate-400">{log.nombre_autor}</span> 
-                • {log.entidad}
+              <p className="text-xs text-slate-700 font-medium leading-relaxed" title={log.detalles}>{log.detalles}</p>
+              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium">
+                <span className="font-bold text-slate-600">{log.nombre_autor}</span> 
+                <span className="text-slate-300">•</span> 
+                <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide text-slate-500">{log.entidad}</span>
               </p>
             </div>
 
-            <div className="flex items-center gap-1 text-[10px] text-slate-600 font-mono shrink-0">
-              <Clock size={12} />
+            {/* MARCA TEMPORAL EN GRIS */}
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono shrink-0 font-medium">
+              <Clock size={12} className="text-slate-400" />
               {new Date(log.created_at).toLocaleString('es-CL', {
                 day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'
               })}
@@ -120,7 +127,7 @@ export const AuditLogs = () => {
         ))}
 
         {logs.length === 0 && (
-          <div className="text-center text-slate-500 py-8 text-sm">No hay registros de actividad recientes.</div>
+          <div className="text-center text-slate-400 py-8 text-xs font-medium uppercase tracking-wider">No hay registros de actividad recientes.</div>
         )}
       </div>
     </div>

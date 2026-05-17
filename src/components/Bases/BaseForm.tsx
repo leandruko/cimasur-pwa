@@ -1,30 +1,22 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase'; // Importación directa de Supabase
+import { supabase } from '../../lib/supabase';
 import { generarCodigoBase } from '../../lib/utils/codigos';
 import { useLiveQuery } from 'dexie-react-hooks'; 
-import { db } from '../../lib/db'; // Seguimos usando Dexie solo para leer datos maestros rápido
-// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
+import { db } from '../../lib/db'; 
 import { registrarAuditoria } from '../../services/auditService';
+import { Beaker, Loader2 } from 'lucide-react';
 
 export const BaseForm = () => {
-  // Mantenemos useLiveQuery solo para los selectores (mejora la velocidad de carga)
   const tiposBase = useLiveQuery(() => db.tipo_base.toArray()) || [];
   const responsables = useLiveQuery(() => db.perfiles.toArray()) || [];
 
-  const [codigoGenerado, setCodigoGenerado] = useState('');
+  const [codigoGenerated, setCodigoGenerated] = useState('');
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   
   const [formData, setFormData] = useState({
-    tipo_id: '',
-    proveedor: '',
-    lote_materia_prima: '',
-    cantidad: '',
-    concentracion: '',
-    fecha_elaboracion: '',
-    vencimiento: '',
-    responsable_id: '',
-    qa: 'OK' // Cambiado a valor directo OK/NO
+    tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
+    concentracion: '', fecha_elaboracion: '', vencimiento: '', responsable_id: '', qa: 'OK'
   });
 
   const handleGenerarCodigo = async () => {
@@ -35,7 +27,7 @@ export const BaseForm = () => {
     try {
       const tipoSeleccionado = tiposBase.find(t => String(t.id) === String(formData.tipo_id));
       const codigo = await generarCodigoBase(tipoSeleccionado?.nombre || 'GEN');
-      setCodigoGenerado(codigo);
+      setCodigoGenerated(codigo);
     } catch (error) {
       setMensaje({ tipo: 'error', texto: 'Error al generar el código.' });
     }
@@ -43,18 +35,17 @@ export const BaseForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!codigoGenerado) {
+    if (!codigoGenerated) {
       setMensaje({ tipo: 'error', texto: 'Debes generar el código base antes de registrar.' });
       return;
     }
 
     setLoading(true);
     try {
-      // INSERCIÓN DIRECTA EN SUPABASE
       const { error } = await supabase
         .from('bases')
         .insert([{
-          codigo: codigoGenerado,
+          codigo: codigoGenerated,
           tipo_id: formData.tipo_id,
           proveedor: formData.proveedor,
           lote_materia_prima: formData.lote_materia_prima,
@@ -68,24 +59,21 @@ export const BaseForm = () => {
 
       if (error) throw error;
 
-      // 👉 REGISTRO DE AUDITORÍA
-      // Buscamos el nombre del tipo de base para el registro
       const tipoSeleccionado = tiposBase.find(t => String(t.id) === String(formData.tipo_id));
       await registrarAuditoria(
         'CREAR', 
         'Materia Base', 
-        `Registró un nuevo lote de ${tipoSeleccionado?.nombre || 'Base'} (Código: ${codigoGenerado} | Cant: ${formData.cantidad})`
+        `Registró un nuevo lote de ${tipoSeleccionado?.nombre || 'Base'} (Código: ${codigoGenerated} | Cant: ${formData.cantidad})`
       );
 
-      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente en la nube: ${codigoGenerado}` });
+      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente en la nube: ${codigoGenerated}` });
       
-      // Limpiar formulario
       setFormData({
         tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
         concentracion: '', fecha_elaboracion: '', vencimiento: '',
         responsable_id: '', qa: 'OK'
       });
-      setCodigoGenerado('');
+      setCodigoGenerated('');
       
     } catch (error: any) {
       console.error("Error en Supabase:", error);
@@ -96,122 +84,186 @@ export const BaseForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
-            Registro de Materia Base (Online)
-          </h2>
-          {codigoGenerado && (
-            <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-lg font-mono font-bold text-blue-400">
-              {codigoGenerado}
+    <div className="w-full">
+      {/* TARJETA BLANCA COMO LA IMAGEN REFERENCIAL */}
+      <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+        
+        {/* CABECERA: Textos oscuros y badge destacado */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-cyan-50 rounded-xl">
+                <Beaker className="text-cyan-500" size={20} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+                Ingreso de Materia Base
+              </h2>
+            </div>
+            <p className="text-slate-500 text-xs font-medium">
+              Complete los datos del lote para generar la trazabilidad analítica inicial.
+            </p>
+          </div>
+          
+          {codigoGenerated && (
+            <div className="bg-cyan-50 border border-cyan-100 px-4 py-2 rounded-xl flex flex-col justify-center items-center shrink-0 animate-in fade-in zoom-in duration-300">
+              <span className="text-[9px] font-black uppercase text-cyan-600 tracking-widest mb-0.5">CÓDIGO MAESTRO</span>
+              <span className="font-mono font-black text-slate-700 text-base uppercase">{codigoGenerated}</span>
             </div>
           )}
         </div>
 
+        {/* FEEDBACK MANTENIENDO CONTRASTE */}
         {mensaje.texto && (
-          <div className={`p-4 rounded-xl border ${mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
+            mensaje.tipo === 'success' 
+              ? 'bg-green-50 border-green-100 text-green-700' 
+              : 'bg-red-50 border-red-100 text-red-700'
+          }`}>
             {mensaje.texto}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* CAMPOS CON FONDO CLARO Y FOCUS CIAN */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          
           {/* TIPO DE BASE */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Tipo de Base *</label>
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Base *</label>
             <div className="flex gap-2">
               <select 
                 required
-                className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
                 value={formData.tipo_id}
                 onChange={(e) => setFormData({...formData, tipo_id: e.target.value})}
               >
-                <option value="">Seleccione tipo...</option>
-                {tiposBase.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                <option value="" className="bg-white text-slate-400">Seleccione tipo de base...</option>
+                {tiposBase.map(t => <option key={t.id} value={t.id} className="bg-white text-slate-800 uppercase font-bold">{t.nombre}</option>)}
               </select>
-              <button type="button" onClick={handleGenerarCodigo} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-xs">
+              <button 
+                type="button" 
+                onClick={handleGenerarCodigo} 
+                className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-95 shrink-0 shadow-sm"
+              >
                 GENERAR
               </button>
             </div>
           </div>
 
           {/* PROVEEDOR */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Proveedor</label>
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Proveedor / Fabricante</label>
             <input 
-              type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.proveedor} onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
+              type="text" 
+              placeholder="Ej: Merck S.A."
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400"
+              value={formData.proveedor} 
+              onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
             />
           </div>
 
-          {/* DATOS TÉCNICOS */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Cant. (L/Kg)</label>
-              <input type="number" step="0.01" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-                value={formData.cantidad} onChange={(e) => setFormData({...formData, cantidad: e.target.value})}
+          {/* CANTIDAD Y CONCENTRACIÓN */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cant. (L/Kg)</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                placeholder="0.00"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium font-mono placeholder:text-slate-400"
+                value={formData.cantidad} 
+                onChange={(e) => setFormData({...formData, cantidad: e.target.value})}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Concentración</label>
-              <input type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-                value={formData.concentracion} onChange={(e) => setFormData({...formData, concentracion: e.target.value})}
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Concentración</label>
+              <input 
+                type="text" 
+                placeholder="Ej: 99.8%"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400"
+                value={formData.concentracion} 
+                onChange={(e) => setFormData({...formData, concentracion: e.target.value})}
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Lote Materia Prima</label>
-            <input type="text" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-              value={formData.lote_materia_prima} onChange={(e) => setFormData({...formData, lote_materia_prima: e.target.value})}
+          {/* LOTE MATERIA PRIMA */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lote Origen Proveedor</label>
+            <input 
+              type="text" 
+              placeholder="Código de lote de fábrica"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium font-mono placeholder:text-slate-400"
+              value={formData.lote_materia_prima} 
+              onChange={(e) => setFormData({...formData, lote_materia_prima: e.target.value})}
             />
           </div>
 
-          {/* FECHAS */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Fecha Elaboración</label>
-            <input type="date" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-              value={formData.fecha_elaboracion} onChange={(e) => setFormData({...formData, fecha_elaboracion: e.target.value})}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Fecha Vencimiento</label>
-            <input type="date" className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none"
-              value={formData.vencimiento} onChange={(e) => setFormData({...formData,vencimiento: e.target.value})}
+          {/* FECHA ELABORACIÓN */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha Elaboración</label>
+            <input 
+              type="date" 
+              className="w-full bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+              value={formData.fecha_elaboracion} 
+              onChange={(e) => setFormData({...formData, fecha_elaboracion: e.target.value})}
             />
           </div>
 
-          {/* RESPONSABLES */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
-            <select required className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.responsable_id} onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+          {/* FECHA VENCIMIENTO */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha Vencimiento</label>
+            <input 
+              type="date" 
+              className="w-full bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+              value={formData.vencimiento} 
+              onChange={(e) => setFormData({...formData, vencimiento: e.target.value})}
+            />
+          </div>
+
+          {/* RESPONSABLE ASIGNADO */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Analista Responsable *</label>
+            <select 
+              required 
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+              value={formData.responsable_id} 
+              onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
             >
-              <option value="">Seleccione responsable...</option>
-              {responsables.map(r => <option key={r.id} value={r.id}>{r.nombre_completo}</option>)}
+              <option value="" className="text-slate-400">Seleccione un profesional...</option>
+              {responsables.map(r => <option key={r.id} value={r.id} className="text-slate-800 font-bold">{r.nombre_completo}</option>)}
             </select>
           </div>
 
-          {/* CONTROL QA (OK / NO) */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Control QA *</label>
-            <select className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.qa} onChange={(e) => setFormData({...formData, qa: e.target.value})}
+          {/* ESTADO CONTROL DE CALIDAD QA */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado de Control (QA) *</label>
+            <select 
+              className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-bold text-slate-800"
+              value={formData.qa} 
+              onChange={(e) => setFormData({...formData, qa: e.target.value})}
             >
-              <option value="OK">✅ OK</option>
-              <option value="NO">❌ NO</option>
+              <option value="OK" className="text-green-600 font-bold">✅ CONFORME / DISPONIBLE</option>
+              <option value="NO" className="text-red-600 font-bold">❌ RECHAZADO / RETENIDO</option>
             </select>
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          disabled={!codigoGenerado || loading} 
-          className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {loading ? 'REGISTRANDO...' : 'REGISTRAR EN SUPABASE'}
-        </button>
+        {/* BOTÓN CIAN */}
+        <div className="pt-4 border-t border-slate-100">
+          <button 
+            type="submit" 
+            disabled={!codigoGenerated || loading} 
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3.5 rounded-xl shadow-sm transition-all transform active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider text-xs"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={14} /> REGISTRANDO LOTE...
+              </>
+            ) : (
+              'Ingresar Lote Maestro'
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );

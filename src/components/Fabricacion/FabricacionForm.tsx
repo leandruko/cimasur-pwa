@@ -4,7 +4,6 @@ import { db } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { generateCode } from '../../lib/utils/codigos';
 import { RefreshCw, Loader2, Beaker } from 'lucide-react';
-// 👉 IMPORTAMOS EL SERVICIO DE AUDITORÍA
 import { registrarAuditoria } from '../../services/auditService';
 
 export const FabricacionForm = () => {
@@ -38,7 +37,7 @@ export const FabricacionForm = () => {
       const { data, error } = await supabase
         .from('bases')
         .select('codigo, proveedor')
-        .order('codigo', { ascending: false }); // Ordenamos por código si no hay created_at
+        .order('codigo', { ascending: false });
       
       if (error) throw error;
       if (data) setBasesOnline(data);
@@ -49,7 +48,6 @@ export const FabricacionForm = () => {
     }
   };
 
-  // EFECTO DE CARGA INICIAL (Se ejecuta apenas entra al componente)
   useEffect(() => {
     fetchBasesOnline();
   }, []);
@@ -79,7 +77,6 @@ export const FabricacionForm = () => {
           categoria_id: formData.categoria_id,
           producto: formData.producto,
           cantidad_frascos: parseInt(formData.cantidad_frascos),
-          // IMPORTANTE: base_salina_id es el nombre en tu Supabase
           base_salina_id: formData.base_id, 
           ingrediente_activo: formData.ingrediente_activo,
           temperatura: parseFloat(formData.temperatura),
@@ -90,7 +87,6 @@ export const FabricacionForm = () => {
 
       if (error) throw error;
 
-      // 👉 REGISTRO DE AUDITORÍA
       await registrarAuditoria(
         'CREAR', 
         'Fabricación', 
@@ -105,7 +101,7 @@ export const FabricacionForm = () => {
         responsable_id: '', qa: 'OK', observaciones: ''
       });
       setLoteGenerado('');
-      fetchBasesOnline(); // Refrescar lista tras guardar
+      fetchBasesOnline();
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
@@ -115,168 +111,205 @@ export const FabricacionForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl space-y-6">
+    <div className="w-full">
+      {/* TARJETA BLANCA CON BORDES REDONDEADOS SEGÚN LA IMAGEN REFERENCIAL */}
+      <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Beaker className="text-purple-500" />
-            Proceso de Fabricación
-          </h2>
+        {/* CABECERA DE LA TARJETA (Título oscuro + Badge del lote a la derecha) */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-cyan-50 rounded-xl">
+                <Beaker className="text-cyan-500" size={20} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase">
+                Proceso de Fabricación
+              </h2>
+            </div>
+            <p className="text-slate-500 text-xs font-medium">
+              Registre las mezclas de lote y parámetros de control térmico en laboratorio.
+            </p>
+          </div>
+          
           {loteGenerado && (
-            <div className="bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-lg font-mono font-bold text-purple-400">
-              {loteGenerado}
+            <div className="bg-cyan-50 border border-cyan-100 px-4 py-2 rounded-xl flex flex-col justify-center items-center shrink-0 animate-in fade-in zoom-in duration-300">
+              <span className="text-[9px] font-black uppercase text-cyan-600 tracking-widest mb-0.5">LOTE GENERADO</span>
+              <span className="font-mono font-black text-slate-700 text-base uppercase">{loteGenerado}</span>
             </div>
           )}
         </div>
 
+        {/* FEEDBACK DE ACCIÓN */}
         {mensaje.texto && (
-          <div className={`p-4 rounded-xl border animate-in fade-in zoom-in duration-300 ${
-            mensaje.tipo === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+          <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
+            mensaje.tipo === 'success' 
+              ? 'bg-green-50 border-green-100 text-green-700' 
+              : 'bg-red-50 border-red-100 text-red-700'
           }`}>
             {mensaje.texto}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* CONTENEDORES DE INPUTS EN FONDO CLARO CON ENFOQUE CIAN */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Categoría *</label>
-              <div className="flex gap-2">
-                <select 
-                  required
-                  className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                  onChange={(e) => setFormData({...formData, categoria_id: e.target.value})}
-                  value={formData.categoria_id}
-                >
-                  <option value="">Seleccione categoría...</option>
-                  {categorias?.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-                <button type="button" onClick={handleGenerateLote} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all">
-                  Generar
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Nombre del Producto *</label>
-              <input 
-                required type="text"
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, producto: e.target.value})}
-                value={formData.producto}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="flex justify-between text-sm font-medium text-slate-400 mb-1">
-                <span>Base de Origen *</span>
-                {loadingBases && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
-              </label>
-              <div className="flex gap-2">
-                <select 
-                  required
-                  className="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                  onChange={(e) => setFormData({...formData, base_id: e.target.value})}
-                  value={formData.base_id}
-                >
-                  <option value="">{loadingBases ? 'Cargando bases...' : 'Seleccione Base...'}</option>
-                  {basesOnline.map(b => (
-                    <option key={b.codigo} value={b.codigo}>
-                      {b.codigo} ({b.proveedor || 'S/P'})
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={fetchBasesOnline} className="bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-colors">
-                  <RefreshCw size={16} className={loadingBases ? "animate-spin" : ""} />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Cant. Frascos</label>
-                <input 
-                  type="number"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                  onChange={(e) => setFormData({...formData, cantidad_frascos: e.target.value})}
-                  value={formData.cantidad_frascos}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Temp. (°C)</label>
-                <input 
-                  type="number" step="0.1"
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                  onChange={(e) => setFormData({...formData, temperatura: e.target.value})}
-                  value={formData.temperatura}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Ingrediente Activo</label>
-              <input 
-                type="text"
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, ingrediente_activo: e.target.value})}
-                value={formData.ingrediente_activo}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Responsable *</label>
+          {/* CATEGORÍA */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría *</label>
+            <div className="flex gap-2">
               <select 
                 required
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
-                value={formData.responsable_id}
+                className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+                onChange={(e) => setFormData({...formData, categoria_id: e.target.value})}
+                value={formData.categoria_id}
               >
-                <option value="">Seleccione responsable...</option>
-                {usuarios?.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
+                <option value="" className="text-slate-400">Seleccione categoría...</option>
+                {categorias?.map(c => <option key={c.id} value={c.id} className="text-slate-800">{c.nombre}</option>)}
               </select>
+              <button 
+                type="button" 
+                onClick={handleGenerateLote} 
+                className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-95 shrink-0 shadow-sm"
+              >
+                Generar
+              </button>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Estado QA *</label>
+          {/* NOMBRE DEL PRODUCTO */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre del Producto *</label>
+            <input 
+              required 
+              type="text"
+              placeholder="Ej: Paracetamol Gotas 100mg"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400"
+              onChange={(e) => setFormData({...formData, producto: e.target.value})}
+              value={formData.producto}
+            />
+          </div>
+
+          {/* BASE DE ORIGEN */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span>Base de Origen *</span>
+              {loadingBases && <Loader2 className="w-3 h-3 animate-spin text-cyan-500" />}
+            </label>
+            <div className="flex gap-2">
               <select 
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, qa: e.target.value})}
-                value={formData.qa}
+                required
+                className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+                onChange={(e) => setFormData({...formData, base_id: e.target.value})}
+                value={formData.base_id}
               >
-                <option value="OK">✅ OK (Aprobado)</option>
-                <option value="NO">❌ NO (Rechazado)</option>
+                <option value="" className="text-slate-400">{loadingBases ? 'Cargando bases...' : 'Seleccione Base...'}</option>
+                {basesOnline.map(b => (
+                  <option key={b.codigo} value={b.codigo} className="text-slate-800 font-mono">
+                    {b.codigo} ({b.proveedor || 'Sin Proveedor'})
+                  </option>
+                ))}
               </select>
+              <button 
+                type="button" 
+                onClick={fetchBasesOnline} 
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-3 rounded-xl transition-colors border border-slate-200"
+              >
+                <RefreshCw size={16} className={loadingBases ? "animate-spin text-cyan-500" : ""} />
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Observaciones</label>
-              <textarea 
-                rows={1}
-                className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
-                onChange={(e) => setFormData({...formData, observaciones: e.target.value})}
-                value={formData.observaciones}
-              ></textarea>
+          </div>
+
+          {/* FRASCOS Y TEMPERATURA */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cant. Frascos</label>
+              <input 
+                type="number"
+                placeholder="0"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium font-mono placeholder:text-slate-400"
+                onChange={(e) => setFormData({...formData, cantidad_frascos: e.target.value})}
+                value={formData.cantidad_frascos}
+              />
             </div>
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Temp. (°C)</label>
+              <input 
+                type="number" 
+                step="0.1"
+                placeholder="18.0"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium font-mono placeholder:text-slate-400"
+                onChange={(e) => setFormData({...formData, temperatura: e.target.value})}
+                value={formData.temperatura}
+              />
+            </div>
+          </div>
+          
+          {/* INGREDIENTE ACTIVO */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ingrediente Activo</label>
+            <input 
+              type="text"
+              placeholder="Ej: Principio Activo A"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400"
+              onChange={(e) => setFormData({...formData, ingrediente_activo: e.target.value})}
+              value={formData.ingrediente_activo}
+            />
+          </div>
+
+          {/* RESPONSABLE */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Responsable *</label>
+            <select 
+              required
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
+              onChange={(e) => setFormData({...formData, responsable_id: e.target.value})}
+              value={formData.responsable_id}
+            >
+              <option value="" className="text-slate-400">Seleccione responsable...</option>
+              {usuarios?.map(u => <option key={u.id} value={u.id} className="text-slate-800 font-bold">{u.nombre_completo}</option>)}
+            </select>
+          </div>
+
+          {/* ESTADO QA */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado QA *</label>
+            <select 
+              className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-bold text-slate-800"
+              onChange={(e) => setFormData({...formData, qa: e.target.value})}
+              value={formData.qa}
+            >
+              <option value="OK" className="text-green-600 font-bold">✅ OK (Aprobado)</option>
+              <option value="NO" className="text-red-600 font-bold">❌ NO (Rechazado)</option>
+            </select>
+          </div>
+
+          {/* OBSERVACIONES */}
+          <div className="flex flex-col space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Observaciones</label>
+            <textarea 
+              rows={1}
+              placeholder="Notas internas del lote..."
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400"
+              onChange={(e) => setFormData({...formData, observaciones: e.target.value})}
+              value={formData.observaciones}
+            ></textarea>
           </div>
         </div>
 
-        <button 
-          type="submit"
-          disabled={!loteGenerado || loading}
-          className="w-full bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-widest"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" /> REGISTRANDO...
-            </>
-          ) : 'Registrar Fabricación'}
-        </button>
+        {/* BOTÓN CIAN ELECTRÓNICO */}
+        <div className="pt-4 border-t border-slate-100">
+          <button 
+            type="submit"
+            disabled={!loteGenerado || loading}
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3.5 rounded-xl shadow-sm transition-all transform active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider text-xs"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={14} /> REGISTRANDO...
+              </>
+            ) : 'Registrar Fabricación'}
+          </button>
+        </div>
       </form>
     </div>
   );

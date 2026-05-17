@@ -3,11 +3,9 @@ import { db } from '../lib/db';
 
 export const pullMasterData = async () => {
   if (!navigator.onLine) {
-    console.warn('Sincronización abortada: El dispositivo está offline.');
     return;
   }
 
-  console.log('🔄 Iniciando sincronización de datos maestros...');
 
   // Función interna para sincronizar una tabla específica de forma segura
   const syncTable = async (tableName: string, dexieTable: any) => {
@@ -21,10 +19,10 @@ export const pullMasterData = async () => {
         await dexieTable.clear();
         // Insertamos los nuevos
         await dexieTable.bulkPut(data);
-        console.log(`✅ Tabla [${tableName}] sincronizada: ${data.length} registros.`);
+
       }
     } catch (error) {
-      console.error(`❌ Error sincronizando tabla [${tableName}]:`, error);
+
     }
   };
 
@@ -34,6 +32,4 @@ export const pullMasterData = async () => {
     syncTable('categoria_producto', db.categoria_producto),
     syncTable('perfiles', db.perfiles)
   ]);
-
-  console.log('🏁 Proceso de sincronización finalizado.');
 };

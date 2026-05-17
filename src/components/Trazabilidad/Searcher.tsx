@@ -30,30 +30,27 @@ export const Searcher = () => {
     cargarRecientes();
   }, []);
 
-const realizarBusquedaCompleta = async (codigoLote: string) => {
+  const realizarBusquedaCompleta = async (codigoLote: string) => {
     setLoading(true);
     setError(null);
-    setLoteSeleccionado(null); // Limpiamos selección previa
+    setLoteSeleccionado(null);
 
     try {
-      // 1. Buscamos la fabricación de forma limpia
       const { data: lote, error: errLote } = await supabase
         .from('fabricaciones')
         .select('*')
         .eq('codigo_lote', codigoLote)
-        .maybeSingle(); // Usamos maybeSingle para evitar errores si hay 0 resultados
+        .maybeSingle();
 
       if (errLote) throw errLote;
       if (!lote) throw new Error(`El lote ${codigoLote} no existe en la base de datos.`);
 
-      // 2. Buscamos el nombre del responsable manualmente para evitar fallos de relación
       const { data: perfilFab } = await supabase
         .from('perfiles')
         .select('nombre_completo')
         .eq('id', lote.responsable_id)
         .maybeSingle();
 
-      // 3. Carga paralela de toda la cadena (con los nombres de columna correctos)
       const [resBase, resAlmacen, resEtiquetado, resVentas, resReclamos] = await Promise.all([
         supabase.from('bases').select('*').eq('codigo', lote.base_salina_id).maybeSingle(),
         supabase.from('almacenamientos').select('*').eq('lote_id', codigoLote).maybeSingle(),
@@ -62,7 +59,6 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
         supabase.from('reclamos').select('*').eq('lote_id', codigoLote)
       ]);
 
-      // 4. Buscamos nombres de los otros responsables si existen datos
       const [resNombreBase, resNombreAlmacen, resNombreEtiq] = await Promise.all([
         resBase.data ? supabase.from('perfiles').select('nombre_completo').eq('id', resBase.data.responsable_id).maybeSingle() : null,
         resAlmacen.data ? supabase.from('perfiles').select('nombre_completo').eq('id', resAlmacen.data.responsable_id).maybeSingle() : null,
@@ -84,7 +80,7 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
         }
       });
       
-      setSearchTerm(codigoLote); // Sincronizamos el input
+      setSearchTerm(codigoLote);
     } catch (err: any) {
       console.error("Error en búsqueda:", err);
       setError(err.message);
@@ -133,59 +129,63 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-6 pb-20">
+    <div className="w-full space-y-6 pb-20">
       
       {/* PANEL DE CONTROL (Oculto al imprimir) */}
       <div className="no-print space-y-6">
         
-        {/* BUSCADOR PRINCIPAL */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl">
+        {/* BUSCADOR PRINCIPAL ADAPTADO A LA NUEVA ESTÉTICA BLANCA */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
           <form onSubmit={handleSearch} className="flex gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                className="w-full bg-slate-800 border-none text-white p-4 pl-12 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3.5 pl-12 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium placeholder:text-slate-400 font-mono" 
                 placeholder="Escriba el código de lote..." 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
               />
             </div>
-            <button className="bg-blue-600 hover:bg-blue-500 text-white px-10 rounded-2xl font-black transition-all">
-              {loading ? <Loader2 className="animate-spin" /> : 'RASTREAR'}
+            <button className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-95 shrink-0 shadow-sm flex items-center justify-center">
+              {loading ? <Loader2 className="animate-spin" size={16} /> : 'RASTREAR'}
             </button>
           </form>
         </div>
 
-        {/* FILTROS Y RECIENTES */}
+        {/* FILTROS Y RECIENTES EN CAJAS BLANCAS CON ACENTOS CIAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <div className="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase mb-4"><Calendar size={16}/> Auditoría por Rango</div>
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase mb-4 tracking-wider">
+              <Calendar size={16}/> Auditoría por Rango
+            </div>
             <form onSubmit={handleFiltrarRango} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-2">
-                <input type="date" className="bg-slate-800 text-white p-2 rounded-xl text-xs outline-none" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
-                <input type="date" className="bg-slate-800 text-white p-2 rounded-xl text-xs outline-none" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+                <input type="date" className="bg-slate-50 border border-slate-200 text-slate-700 p-2.5 rounded-xl text-xs outline-none focus:ring-1 focus:ring-cyan-500" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+                <input type="date" className="bg-slate-50 border border-slate-200 text-slate-700 p-2.5 rounded-xl text-xs outline-none focus:ring-1 focus:ring-cyan-500" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
               </div>
-              <button className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-xl text-xs">FILTRAR NUBE</button>
+              <button className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors">
+                {buscandoRango ? 'Buscando...' : 'FILTRAR NUBE'}
+              </button>
             </form>
             
             {lotesRango.length > 0 && (
-              <div className="mt-4 max-h-40 overflow-y-auto space-y-2">
+              <div className="mt-4 max-h-40 overflow-y-auto space-y-2 border-t border-slate-100 pt-3">
                 {lotesRango.map(l => (
-                  <button key={l.codigo_lote} onClick={() => realizarBusquedaCompleta(l.codigo_lote)} className="w-full flex justify-between p-2 bg-slate-800 rounded-lg text-[10px] text-white hover:bg-blue-900/30">
-                    <span className="font-mono">{l.codigo_lote}</span>
-                    <span>{l.producto}</span>
+                  <button key={l.codigo_lote} onClick={() => realizarBusquedaCompleta(l.codigo_lote)} className="w-full flex justify-between items-center p-2.5 bg-slate-50 hover:bg-cyan-50 rounded-xl text-xs text-slate-700 hover:text-cyan-700 border border-slate-100 transition-colors">
+                    <span className="font-mono font-bold">{l.codigo_lote}</span>
+                    <span className="truncate max-w-[180px] text-slate-500 font-medium">{l.producto}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <div className="text-slate-500 font-bold text-xs uppercase mb-4">Fabricaciones Recientes</div>
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+            <div className="text-slate-400 font-bold text-xs uppercase mb-4 tracking-wider">Fabricaciones Recientes</div>
             <div className="flex flex-wrap gap-2">
               {lotesHoy.map(l => (
-                <button key={l.codigo_lote} onClick={() => realizarBusquedaCompleta(l.codigo_lote)} className="bg-slate-800 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700">
+                <button key={l.codigo_lote} onClick={() => realizarBusquedaCompleta(l.codigo_lote)} className="bg-slate-50 hover:bg-cyan-50 text-slate-700 hover:text-cyan-700 px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-slate-200/60 transition-colors">
                   {l.codigo_lote}
                 </button>
               ))}
@@ -194,21 +194,29 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
         </div>
       </div>
 
-      {error && <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-red-400 text-sm flex items-center gap-3"><AlertCircle /> {error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-red-700 text-xs font-bold flex items-center gap-3 animate-in fade-in">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
 
       {/* ACCIONES DEL REPORTE */}
       {loteSeleccionado && (
         <div className="no-print flex justify-end gap-3">
-          <button onClick={() => window.print()} className="bg-white text-black px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-slate-100"><Printer size={18}/> Imprimir PDF</button>
-          <button onClick={exportarExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-green-500"><FileSpreadsheet size={18}/> Exportar Excel</button>
+          <button onClick={() => window.print()} className="bg-white border border-slate-200 text-slate-700 px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors">
+            <Printer size={16}/> Imprimir PDF
+          </button>
+          <button onClick={exportarExcel} className="bg-green-600 text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm hover:bg-green-500 transition-colors">
+            <FileSpreadsheet size={16}/> Exportar Excel
+          </button>
         </div>
       )}
 
-      {/* REPORTE OFICIAL (Ajustado para impresión y nombres correctos) */}
+      {/* REPORTE OFICIAL (Formato puro para trazabilidad institucional) */}
       {loteSeleccionado && (
-        <div id="printable-report" className="bg-white text-slate-900 p-10 rounded-sm border-t-[16px] border-black shadow-2xl print:shadow-none print:p-0">
+        <div id="printable-report" className="bg-white text-slate-900 p-10 rounded-sm border-t-[16px] border-slate-900 shadow-sm print:shadow-none print:p-0">
           
-          <div className="flex justify-between items-start border-b-4 border-black pb-8 mb-10">
+          <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-10">
             <div>
               <h1 className="text-4xl font-black tracking-tighter">CIMASUR S.A.</h1>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Reporte Maestro de Trazabilidad</p>
@@ -261,7 +269,7 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
               <h3 className="text-sm font-black bg-slate-900 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">4. Registro de Salidas</h3>
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-black">
+                  <tr className="border-b-2 border-slate-900">
                     <th className="py-2 text-[10px] font-bold text-slate-400 uppercase">Cliente / Institución</th>
                     <th className="py-2 text-[10px] font-bold text-slate-400 uppercase">Tipo</th>
                     <th className="py-2 text-[10px] font-bold text-slate-400 uppercase text-right">Cantidad</th>
@@ -281,7 +289,7 @@ const realizarBusquedaCompleta = async (codigoLote: string) => {
               </table>
             </section>
 
-            {/* SECCIÓN 5: INCIDENCIAS (Ajustado a tipo_problema y detalles) */}
+            {/* SECCIÓN 5: INCIDENCIAS */}
             <section className="print:break-before-page">
               <h3 className="text-sm font-black bg-red-600 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">5. Reporte de Incidencias</h3>
               {loteSeleccionado.reclamos.length > 0 ? (

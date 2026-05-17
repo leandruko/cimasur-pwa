@@ -10,7 +10,6 @@ export const registrarAuditoria = async (
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
-      console.error("Auditoría: No hay usuario logueado.");
       return;
     }
 
@@ -25,13 +24,10 @@ export const registrarAuditoria = async (
 
     // SI SUPABASE LO RECHAZA, TE SALDRÁ ESTA ALERTA
     if (error) {
-      console.error("Supabase rechazó la auditoría:", error);
       alert("Error guardando historial: " + error.message); 
     } else {
-      console.log(`✅ Acción ${accion} registrada exitosamente.`);
     }
 
   } catch (error) {
-    console.error("Error al registrar auditoría:", error);
   }
 };

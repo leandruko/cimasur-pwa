@@ -15,7 +15,6 @@ export const SyncManager = () => {
     const pullMasterData = async () => {
       if (!navigator.onLine) return;
       
-      console.log('🔄 Sincronizando datos maestros desde Supabase...');
       
       for (const table of MASTER_TABLES) {
         try {
@@ -27,10 +26,8 @@ export const SyncManager = () => {
             await db[table].bulkPut(data); // bulkPut actualiza o inserta sin dar error
           }
         } catch (err) {
-          console.error(`Error bajando tabla ${table}:`, err);
         }
       }
-      console.log('✅ Datos maestros (Responsables, Tipos, Categorías) actualizados.');
     };
 
     // 2. FUNCIÓN PARA SUBIR DATOS (PUSH)
@@ -38,7 +35,6 @@ export const SyncManager = () => {
     const pushOfflineData = async () => {
       if (!navigator.onLine) return;
 
-      console.log('📤 Subiendo cambios locales pendientes...');
 
       for (const tableName of TABLES_TO_PUSH) {
         try {
@@ -57,11 +53,9 @@ export const SyncManager = () => {
               // @ts-ignore
               await db[tableName].update(pk, { dirty: 0, synced: 1 });
             } else {
-              console.error(`Error subiendo item a ${tableName}:`, error.message);
             }
           }
         } catch (err) {
-          console.error(`Error en push para ${tableName}:`, err);
         }
       }
     };
