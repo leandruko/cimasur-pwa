@@ -66,7 +66,7 @@ export const BaseForm = () => {
         `Registró un nuevo lote de ${tipoSeleccionado?.nombre || 'Base'} (Código: ${codigoGenerated} | Cant: ${formData.cantidad})`
       );
 
-      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente en la nube: ${codigoGenerated}` });
+      setMensaje({ tipo: 'success', texto: `Lote registrado exitosamente in la nube: ${codigoGenerated}` });
       
       setFormData({
         tipo_id: '', proveedor: '', lote_materia_prima: '', cantidad: '',
@@ -85,10 +85,8 @@ export const BaseForm = () => {
 
   return (
     <div className="w-full">
-      {/* TARJETA BLANCA COMO LA IMAGEN REFERENCIAL */}
       <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* CABECERA: Textos oscuros y badge destacado */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
@@ -112,7 +110,6 @@ export const BaseForm = () => {
           )}
         </div>
 
-        {/* FEEDBACK MANTENIENDO CONTRASTE */}
         {mensaje.texto && (
           <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
             mensaje.tipo === 'success' 
@@ -123,7 +120,6 @@ export const BaseForm = () => {
           </div>
         )}
 
-        {/* CAMPOS CON FONDO CLARO Y FOCUS CIAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* TIPO DE BASE */}
@@ -149,9 +145,9 @@ export const BaseForm = () => {
             </div>
           </div>
 
-          {/* PROVEEDOR */}
+          {/* PROVEEDOR (INCIDENCIA: Se eliminó / Fabricante) */}
           <div className="flex flex-col space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Proveedor / Fabricante</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Proveedor</label>
             <input 
               type="text" 
               placeholder="Ej: Merck S.A."
@@ -161,10 +157,10 @@ export const BaseForm = () => {
             />
           </div>
 
-          {/* CANTIDAD Y CONCENTRACIÓN */}
+          {/* CANTIDAD Y CONCENTRACIÓN (INCIDENCIA: Solo en Litros) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cant. (L/Kg)</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cant. (solo en Litros)</label>
               <input 
                 type="number" 
                 step="0.01" 
@@ -186,7 +182,7 @@ export const BaseForm = () => {
             </div>
           </div>
 
-          {/* LOTE MATERIA PRIMA */}
+          {/* LOTE ORIGEN PROVEEDOR (INCIDENCIA: Nombre de campo modificado) */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lote Origen Proveedor</label>
             <input 
@@ -220,9 +216,9 @@ export const BaseForm = () => {
             />
           </div>
 
-          {/* RESPONSABLE ASIGNADO */}
+          {/* RESPONSABLE (INCIDENCIA: Se eliminó Analista) */}
           <div className="flex flex-col space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Analista Responsable *</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Responsable *</label>
             <select 
               required 
               className="w-full bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-medium"
@@ -234,7 +230,7 @@ export const BaseForm = () => {
             </select>
           </div>
 
-          {/* ESTADO CONTROL DE CALIDAD QA */}
+          {/* ESTADO CONTROL DE CALIDAD QA (INCIDENCIA: Solo conforme y rechazado) */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado de Control (QA) *</label>
             <select 
@@ -242,13 +238,12 @@ export const BaseForm = () => {
               value={formData.qa} 
               onChange={(e) => setFormData({...formData, qa: e.target.value})}
             >
-              <option value="OK" className="text-green-600 font-bold">✅ CONFORME / DISPONIBLE</option>
-              <option value="NO" className="text-red-600 font-bold">❌ RECHAZADO / RETENIDO</option>
+              <option value="OK" className="text-green-600 font-bold">conforme</option>
+              <option value="NO" className="text-red-600 font-bold">rechazado</option>
             </select>
           </div>
         </div>
 
-        {/* BOTÓN CIAN */}
         <div className="pt-4 border-t border-slate-100">
           <button 
             type="submit" 

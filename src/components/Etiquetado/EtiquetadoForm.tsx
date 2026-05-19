@@ -52,7 +52,7 @@ export const EtiquetadoForm = () => {
       return setMensaje({ tipo: 'error', texto: "Debe seleccionar un lote y un responsable." });
     }
 
-    setLoading(true);
+    loading(true);
     setMensaje({ tipo: '', texto: '' });
 
     try {
@@ -77,13 +77,12 @@ export const EtiquetadoForm = () => {
 
       setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito.` });
       
-      setFormData({
-        lote_id: '',
+      // 👉 INCIDENCIA SOLUCIONADA: Limpiamos cantidades y fechas, pero preservamos el lote_id y el responsable_id
+      setFormData(prev => ({
+        ...prev,
         cantidad_etiquetada: '',
         vencimiento_etiqueta: '',
-        qa: 'OK',
-        responsable_id: '',
-      });
+      }));
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });

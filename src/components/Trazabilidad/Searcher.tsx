@@ -84,7 +84,7 @@ export const Searcher = () => {
     } catch (err: any) {
       console.error("Error en búsqueda:", err);
       setError(err.message);
-    } finally {
+    } fillado: {
       setLoading(false);
     }
   };
@@ -134,7 +134,7 @@ export const Searcher = () => {
       {/* PANEL DE CONTROL (Oculto al imprimir) */}
       <div className="no-print space-y-6">
         
-        {/* BUSCADOR PRINCIPAL ADAPTADO A LA NUEVA ESTÉTICA BLANCA */}
+        {/* BUSCADOR PRINCIPAL */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
           <form onSubmit={handleSearch} className="flex gap-3">
             <div className="relative flex-1">
@@ -153,7 +153,7 @@ export const Searcher = () => {
           </form>
         </div>
 
-        {/* FILTROS Y RECIENTES EN CAJAS BLANCAS CON ACENTOS CIAN */}
+        {/* FILTROS Y RECIENTES */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase mb-4 tracking-wider">
@@ -212,109 +212,115 @@ export const Searcher = () => {
         </div>
       )}
 
-      {/* REPORTE OFICIAL (Formato puro para trazabilidad institucional) */}
+      {/* REPORTE REESTRUCTURADO: MÁXIMA FORMALIDAD INSTITUCIONAL */}
       {loteSeleccionado && (
-        <div id="printable-report" className="bg-white text-slate-900 p-10 rounded-sm border-t-[16px] border-slate-900 shadow-sm print:shadow-none print:p-0">
+        <div id="printable-report" className="bg-white text-slate-900 p-12 border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0 space-y-10">
           
-          <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-10">
+          {/* ENCABEZADO FORMAL DE LABORATORIO */}
+          <div className="flex justify-between items-end border-b-2 border-slate-800 pb-6">
             <div>
-              <h1 className="text-4xl font-black tracking-tighter">CIMASUR S.A.</h1>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Reporte Maestro de Trazabilidad</p>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">CIMASUR S.A.</h1>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">SISTEMA INSTITUCIONAL DE TRAZABILIDAD Y ASEGURAMIENTO DE CALIDAD</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Documento de Lote</p>
-              <p className="text-3xl font-mono font-black">{loteSeleccionado.lote.codigo_lote}</p>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CERTIFICADO MAESTRO DE PARTIDA</span>
+              <span className="font-mono font-bold text-xl text-slate-900 bg-slate-50 px-3 py-1 border border-slate-200 rounded block mt-1">{loteSeleccionado.lote.codigo_lote}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-12">
+          <div className="grid grid-cols-1 gap-8">
             
             {/* SECCIÓN 1: PROCESO */}
-            <section>
-              <h3 className="text-sm font-black bg-slate-900 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">1. Datos de Fabricación</h3>
-              <div className="grid grid-cols-3 gap-8 text-sm border-l-4 border-slate-100 pl-6">
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Producto</label><p className="font-bold text-lg">{loteSeleccionado.lote.producto}</p></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Fecha de Registro</label><p className="font-bold">{new Date(loteSeleccionado.lote.created_at).toLocaleDateString()}</p></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Responsable Planta</label><p className="font-bold">{loteSeleccionado.responsables.fab}</p></div>
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-300 pb-1">1. Especificaciones de Manufactura</h3>
+              <div className="grid grid-cols-3 gap-6 text-xs pl-2">
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Producto Determinado</label><p className="font-bold text-sm text-slate-800">{loteSeleccionado.lote.producto}</p></div>
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Fecha de Registro Oficial</label><p className="font-medium text-slate-700">{new Date(loteSeleccionado.lote.created_at).toLocaleDateString('es-CL')}</p></div>
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Responsable de Planta</label><p className="font-medium text-slate-700">{loteSeleccionado.responsables.fab}</p></div>
               </div>
             </section>
 
             {/* SECCIÓN 2: MATERIA PRIMA */}
-            <section>
-              <h3 className="text-sm font-black bg-slate-900 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">2. Trazabilidad de Origen</h3>
-              <div className="grid grid-cols-3 gap-8 text-sm border-l-4 border-slate-100 pl-6">
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">ID Base Salina</label><p className="font-mono font-bold">{loteSeleccionado.base?.codigo || loteSeleccionado.lote.base_salina_id}</p></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Proveedor Base</label><p className="font-bold">{loteSeleccionado.base?.proveedor || 'N/A'}</p></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Analista Base</label><p className="font-bold">{loteSeleccionado.responsables.base}</p></div>
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-300 pb-1">2. Trazabilidad Analítica de Origen</h3>
+              <div className="grid grid-cols-3 gap-6 text-xs pl-2">
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Identificador de Base</label><p className="font-mono font-bold text-slate-800">{loteSeleccionado.base?.codigo || loteSeleccionado.lote.base_salina_id}</p></div>
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Proveedor de Origen</label><p className="font-medium text-slate-700">{loteSeleccionado.base?.proveedor || 'N/A'}</p></div>
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Responsable de Análisis</label><p className="font-medium text-slate-700">{loteSeleccionado.responsables.base}</p></div>
               </div>
             </section>
 
-            {/* SECCIÓN 3: CONTROL DE CALIDAD */}
-            <section>
-              <h3 className="text-sm font-black bg-slate-900 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">3. Almacén y QA Final</h3>
-              <div className="grid grid-cols-3 gap-8 text-sm border-l-4 border-slate-100 pl-6">
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ubicación Física</label><p className="font-bold">{loteSeleccionado.almacen?.ubicacion || 'PENDIENTE'}</p></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Aprobación QA</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    {loteSeleccionado.etiquetado?.qa === 'OK' ? <CheckCircle2 className="text-green-600" size={18}/> : <XCircle className="text-red-600" size={18}/>}
-                    <p className="font-black">{loteSeleccionado.etiquetado?.qa || 'NO REGISTRADO'}</p>
+            {/* SECCIÓN 3: CONTROL DE CALIDAD Y RESGUARDO */}
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-300 pb-1">3. Estado de Resguardo y Validación Final</h3>
+              <div className="grid grid-cols-3 gap-6 text-xs pl-2">
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Ubicación Física Asignada</label><p className="font-medium text-slate-700">{loteSeleccionado.almacen?.ubicacion || 'PROCESO PENDIENTE'}</p></div>
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Dictamen de Control (QA)</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {loteSeleccionado.etiquetado?.qa === 'OK' ? (
+                      <span className="text-green-700 font-bold uppercase tracking-wide bg-green-50 border border-green-100 px-2 py-0.5 rounded text-[10px]">CONFORME</span>
+                    ) : (
+                      <span className="text-red-700 font-bold uppercase tracking-wide bg-red-50 border border-red-100 px-2 py-0.5 rounded text-[10px]">RECHAZADO / RETENIDO</span>
+                    )}
                   </div>
                 </div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Analista Etiquetado</label><p className="font-bold">{loteSeleccionado.responsables.etiq}</p></div>
+                <div><label className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Responsable Visado Final</label><p className="font-medium text-slate-700">{loteSeleccionado.responsables.etiq}</p></div>
               </div>
             </section>
 
-            {/* SECCIÓN 4: DISTRIBUCIÓN */}
-            <section>
-              <h3 className="text-sm font-black bg-slate-900 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">4. Registro de Salidas</h3>
-              <table className="w-full text-left text-sm border-collapse">
+            {/* SECCIÓN 4: DISTRIBUCIÓN (TABLA FORMAL CON CONTRASTES OSCUROS) */}
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-300 pb-1">4. Historial de Despacho y Distribución</h3>
+              <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-slate-900">
-                    <th className="py-2 text-[10px] font-bold text-slate-400 uppercase">Cliente / Institución</th>
-                    <th className="py-2 text-[10px] font-bold text-slate-400 uppercase">Tipo</th>
-                    <th className="py-2 text-[10px] font-bold text-slate-400 uppercase text-right">Cantidad</th>
+                  <tr className="border-b border-slate-400 bg-slate-50 text-slate-600 font-bold">
+                    <th className="p-2 pl-4">Cliente / Entidad Destinataria</th>
+                    <th className="p-2">Tipo Operación</th>
+                    <th className="p-2 pr-4 text-right">Volumen Despachado</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {loteSeleccionado.ventas.length > 0 ? loteSeleccionado.ventas.map((v: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 italic">
-                      <td className="py-3 font-medium">{v.cliente}</td>
-                      <td className="py-3 text-[10px]">{v.tipo_venta}</td>
-                      <td className="py-3 text-right font-black">{v.cantidad_vendida} Unidades</td>
+                    <tr key={i} className="text-slate-700">
+                      <td className="p-2.5 pl-4 font-medium">{v.cliente}</td>
+                      <td className="p-2.5 uppercase text-[10px] text-slate-400 font-mono">{v.tipo_venta}</td>
+                      <td className="p-2.5 pr-4 text-right font-bold text-slate-900 font-mono">{v.cantidad_vendida} Unidades</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={3} className="py-8 text-center text-slate-400 italic">No se registran despachos para este lote.</td></tr>
+                    <tr><td colSpan={3} className="p-6 text-center text-slate-400 italic">No se registran egresos ni movimientos comerciales cargados para esta partida.</td></tr>
                   )}
                 </tbody>
               </table>
             </section>
 
             {/* SECCIÓN 5: INCIDENCIAS */}
-            <section className="print:break-before-page">
-              <h3 className="text-sm font-black bg-red-600 text-white p-2 px-4 inline-block mb-6 uppercase skew-x-[-10deg]">5. Reporte de Incidencias</h3>
+            <section className="space-y-3 print:break-before-page">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-300 pb-1">5. Historial de Alertas de Desvío</h3>
               {loteSeleccionado.reclamos.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="border border-red-200 rounded-xl divide-y divide-red-100 overflow-hidden">
                   {loteSeleccionado.reclamos.map((r: any, i: number) => (
-                    <div key={i} className="p-4 border-2 border-red-100 rounded-xl bg-red-50/30">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-[10px] font-black text-red-600 uppercase">{r.tipo_problema || 'Problema General'}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                    <div key={i} className="p-3.5 bg-red-50/10 text-xs">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-bold text-red-700 uppercase">Incidencia Registrada: {r.tipo_problema || 'Desvío General'}</span>
+                        <span className="text-slate-400 font-mono">{new Date(r.created_at).toLocaleDateString('es-CL')}</span>
                       </div>
-                      <p className="text-sm italic text-slate-700">"{r.detalles || r.descripcion}"</p>
+                      <p className="text-slate-600 font-medium">Detalles informados: "{r.detalles || r.descripcion}"</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center gap-3 text-green-600 font-bold text-sm bg-green-50 p-4 rounded-xl border border-green-100">
-                  <CheckCircle2 size={18}/> Lote libre de reclamos e incidencias post-venta.
+                <div className="text-xs text-green-700 font-semibold bg-green-50/60 p-3.5 rounded-xl border border-green-100">
+                  ✓ Confirmado: El lote se encuentra libre de reclamaciones, desvíos analíticos o retenciones post-venta vigentes.
                 </div>
               )}
             </section>
           </div>
           
-          <div className="mt-20 flex justify-between items-end border-t border-slate-200 pt-10 opacity-50">
-            <div className="text-[9px] font-mono text-slate-400">Generado automáticamente por CIMASUR Cloud Trace v2.0</div>
-            <div className="w-32 h-1 bg-slate-200"></div>
+
+          <div className="mt-12 flex justify-between items-center border-t border-slate-200 pt-6 opacity-40 text-[9px] text-slate-400 font-mono">
+            <div>Generado de forma automatizada por CIMASUR Cloud Trace v2.0</div>
+            <div>Fecha de emisión: {new Date().toLocaleDateString('es-CL')}</div>
           </div>
         </div>
       )}

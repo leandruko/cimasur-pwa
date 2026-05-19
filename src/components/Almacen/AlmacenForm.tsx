@@ -34,7 +34,6 @@ export const AlmacenForm = () => {
       if (error) throw error;
       if (data) setLotesOnline(data);
     } catch (err: any) {
-      console.error("Error cargando lotes:", err.message);
     } finally {
       setLoadingLotes(false);
     }
@@ -75,12 +74,13 @@ export const AlmacenForm = () => {
 
       setMensaje({ tipo: 'success', texto: `✅ Lote ${formData.lote_id} almacenado correctamente.` });
       
-      setFormData({
-        lote_id: '',
+      // 👉 INCIDENCIA SOLUCIONADA: Mantenemos el lote_id y el responsable_id seleccionados 
+      // para que el código no desaparezca de golpe y el usuario vea qué guardó.
+      setFormData(prev => ({
+        ...prev,
         ubicacion: '',
         temperatura_verificada: '',
-        responsable_id: '',
-      });
+      }));
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
