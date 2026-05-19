@@ -19,7 +19,7 @@ export const EtiquetadoForm = () => {
     lote_id: '', 
     cantidad_etiquetada: '',
     vencimiento_etiqueta: '',
-    qa: 'OK', 
+    qa: 'CONFORME', // 👉 Adaptado al nuevo estándar
     responsable_id: '',
   });
 
@@ -52,7 +52,8 @@ export const EtiquetadoForm = () => {
       return setMensaje({ tipo: 'error', texto: "Debe seleccionar un lote y un responsable." });
     }
 
-    loading(true);
+    //  ¡INCIDENCIA SOLUCIONADA! Ahora sí llama correctamente a la función de estado
+    setLoading(true); 
     setMensaje({ tipo: '', texto: '' });
 
     try {
@@ -77,7 +78,7 @@ export const EtiquetadoForm = () => {
 
       setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito.` });
       
-      // 👉 INCIDENCIA SOLUCIONADA: Limpiamos cantidades y fechas, pero preservamos el lote_id y el responsable_id
+      // Preservamos el lote_id y el responsable_id para que no desaparezca de la pantalla
       setFormData(prev => ({
         ...prev,
         cantidad_etiquetada: '',
@@ -93,10 +94,8 @@ export const EtiquetadoForm = () => {
 
   return (
     <div className="w-full">
-      {/* TARJETA BLANCA CON REDONDEADO DE ALTA FIDELIDAD */}
       <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* CABECERA CON ICONO CIAN */}
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-6">
           <div className="p-2 bg-cyan-50 rounded-xl">
             <Tag className="text-cyan-500" size={20} />
@@ -111,7 +110,6 @@ export const EtiquetadoForm = () => {
           </div>
         </div>
 
-        {/* MENSAJES DE RESPUESTA */}
         {mensaje.texto && (
           <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
             mensaje.tipo === 'success' 
@@ -122,7 +120,6 @@ export const EtiquetadoForm = () => {
           </div>
         )}
 
-        {/* CAMPOS CLAROS CON ESTILO DE ENFOQUE CIAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* LOTE A ETIQUETAR */}
@@ -138,7 +135,9 @@ export const EtiquetadoForm = () => {
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
                 value={formData.lote_id}
               >
-                <option value="" className="text-slate-400">{loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}</option>
+                <option value="" className="text-slate-400">
+                  {loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}
+                </option>
                 {lotesOnline.map(f => (
                   <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
                     {f.codigo_lote} - {f.producto}
@@ -192,7 +191,7 @@ export const EtiquetadoForm = () => {
             </div>
           </div>
 
-          {/* VALIDACIÓN QA */}
+          {/* VALIDACIÓN QA (INCIDENCIA ADAPTADA: conforme / rechazado) */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Validación QA *</label>
             <select 
@@ -200,14 +199,13 @@ export const EtiquetadoForm = () => {
               onChange={(e) => setFormData({...formData, qa: e.target.value})}
               value={formData.qa}
             >
-              <option value="OK" className="text-green-600 font-bold">✅ OK (Aprobado)</option>
-              <option value="NO" className="text-red-600 font-bold">❌ NO (Rechazado)</option>
+              <option value="CONFORME" className="text-green-600 font-bold">conforme</option>
+              <option value="RECHAZADO" className="text-red-600 font-bold">rechazado</option>
             </select>
           </div>
 
         </div>
 
-        {/* BOTÓN CIAN INTEGRADO */}
         <div className="pt-4 border-t border-slate-100">
           <button 
             type="submit"
