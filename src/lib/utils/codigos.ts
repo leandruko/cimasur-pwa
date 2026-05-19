@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { supabase } from '../supabase';
 
 /**
  * Función genérica para generar códigos con formato PREFIJO-YYYYMM-00X
@@ -7,29 +8,39 @@ export const generateCode = async (prefijo: string, tabla: 'bases' | 'fabricacio
   const hoy = new Date();
   const yyyy = hoy.getFullYear();
   const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-  
-  // 👉 INCIDENCIA SOLUCIONADA: Ahora solo considera Año y Mes (6 dígitos en total)
-  const periodoStr = `${yyyy}${mm}`; 
+  const periodoStr = `${yyyy}${mm}`; // Ejemplo: 202605
 
   let totalPeriodo = 0;
 
-  // Modificamos el filtro para buscar los registros del mes en curso
-  if (tabla === 'fabricaciones') {
-    const records = await db.fabricaciones
-      .filter(f => typeof f.codigo_lote === 'string' && f.codigo_lote.includes(`-${periodoStr}-`))
-      .toArray();
-    totalPeriodo = records.length;
-  } else if (tabla === 'bases') {
-    const records = await db.bases
-      .filter(b => typeof b.codigo === 'string' && b.codigo.includes(`-${periodoStr}-`))
-      .toArray();
-    totalPeriodo = records.length;
+  try {
+    if (tabla === 'fabricaciones') {
+      // Consultamos a Supabase cuántos lotes se han creado en este mes
+      const { data, error } = await supabase
+        .from('fabricaciones')
+        .select('codigo_lote')
+        .ilike('codigo_lote', `%-${periodoStr}-%`);
+
+      if (!error && data) {
+        totalPeriodo = data.length;
+      }
+    } else if (tabla === 'bases') {
+      // Consultamos a Supabase cuántas bases se han creado en este mes
+      const { data, error } = await supabase
+        .from('bases')
+        .select('codigo')
+        .ilike('codigo', `%-${periodoStr}-%`);
+
+      if (!error && data) {
+        totalPeriodo = data.length;
+      }
+    }
+  } catch (err) {
+    console.error("Error consultando correlativo en la nube, usando fallback local:", err);
   }
 
-  // Genera el correlativo mensual de 3 dígitos (001, 002, etc.)
+  // Generamos el correlativo real basado en lo que hay en producción
   const correlativo = String(totalPeriodo + 1).padStart(3, '0');
   
-  // Retorna el formato oficial: SAL-202512-001 o CB-202605-001
   return `${prefijo}-${periodoStr}-${correlativo}`;
 };
 

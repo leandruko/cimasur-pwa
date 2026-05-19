@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'; // Añadimos useEffect
-import { supabase } from '../../lib/supabase'; // Conexión directa a Supabase
+import React, { useState, useEffect } from 'react'; 
+import { supabase } from '../../lib/supabase'; 
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw, Loader2, ShoppingCart } from 'lucide-react';
@@ -22,17 +22,32 @@ export const VentaForm = () => {
     estado: 'Pendiente'
   });
 
-  // 2. FUNCIÓN PARA TRAER LOTES DE FABRICACIÓN DESDE LA NUBE
+  // 2. FUNCIÓN OPTIMIZADA: FILTRA Y QUITA LOS LOTES QUE YA FUERON VENDIDOS
   const fetchLotesOnline = async () => {
     setLoadingLotes(true);
     try {
-      const { data, error } = await supabase
+      // A. Traemos todas las fabricaciones registradas
+      const { data: fabricaciones, error: errFab } = await supabase
         .from('fabricaciones')
         .select('codigo_lote, producto')
-        .order('created_at', { ascending: false }); // Los más recientes primero
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      if (data) setLotesOnline(data);
+      if (error || errFab) throw errFab || error;
+
+      // B. Traemos la lista de los lotes que YA registran una venta
+      const { data: yaVendidos, error: errVentas } = await supabase
+        .from('ventas')
+        .select('lote_id');
+
+      if (errVentas) throw errVentas;
+
+      // Creamos un Set con los IDs vendidos para una exclusión ultra rápida
+      const setVendidos = new Set(yaVendidos?.map(v => v.lote_id) || []);
+
+      // C. 👉 FILTRO DE EXCLUSIÓN: Dejamos solo los lotes que NO se han vendido todavía
+      const lotesDisponibles = fabricaciones?.filter(f => !setVendidos.has(f.codigo_lote)) || [];
+
+      setLotesOnline(lotesDisponibles);
     } catch (err: any) {
       console.error("Error cargando lotes para ventas:", err.message);
     } finally {
@@ -92,6 +107,9 @@ export const VentaForm = () => {
         estado: 'Pendiente'
       });
 
+      // 👉 ACTUALIZACIÓN EN CALIENTE: Volvemos a ejecutar el filtro para remover el lote de inmediato
+      await fetchLotesOnline();
+
     } catch (error: any) {
       console.error(error);
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
@@ -102,10 +120,8 @@ export const VentaForm = () => {
 
   return (
     <div className="w-full">
-      {/* TARJETA BLANCA IMPLEPECABLE CON REDONDEADO PREMIUM */}
       <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* CABECERA CON ICONO CIAN CORPORATIVO */}
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-6">
           <div className="p-2 bg-cyan-50 rounded-xl">
             <ShoppingCart className="text-cyan-500" size={20} />
@@ -120,7 +136,6 @@ export const VentaForm = () => {
           </div>
         </div>
 
-        {/* FEEDBACK DE ACCIÓN */}
         {mensaje.texto && (
           <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
             mensaje.tipo === 'success' 
@@ -131,7 +146,6 @@ export const VentaForm = () => {
           </div>
         )}
 
-        {/* CAMPOS CLAROS CON ESTILO DE ENFOQUE CIAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* LOTE A VENDER */}
@@ -147,7 +161,9 @@ export const VentaForm = () => {
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
                 value={formData.lote_id}
               >
-                <option value="" className="text-slate-400">{loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}</option>
+                <option value="" className="text-slate-400">
+                  {loadingLotes ? 'Cargando lotes disponibles...' : lotesOnline.length === 0 ? 'No hay lotes pendientes de venta' : 'Seleccione lote...'}
+                </option>
                 {lotesOnline.map(f => (
                   <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
                     {f.codigo_lote} - {f.producto}
@@ -242,7 +258,6 @@ export const VentaForm = () => {
           </div>
         </div>
 
-        {/* BOTÓN UNIFICADO EN CIAN */}
         <div className="pt-4 border-t border-slate-100">
           <button 
             type="submit"
@@ -254,7 +269,7 @@ export const VentaForm = () => {
                 <Loader2 className="animate-spin" size={14} /> REGISTRANDO VENTA...
               </>
             ) : 'REGISTRAR VENTA EN LA NUBE'}
-          </button>
+          </button>y
         </div>
       </form>
     </div>

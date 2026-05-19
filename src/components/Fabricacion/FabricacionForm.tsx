@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { supabase } from '../../lib/supabase';
 import { db } from '../../lib/db'; 
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -26,23 +26,41 @@ export const FabricacionForm = () => {
     ingrediente_activo: '',
     temperatura: '',
     responsable_id: '',
-    qa: 'OK', 
+    qa: 'CONFORME', // 👉 Adaptado al nuevo estándar formal
     observaciones: '',
   });
 
-  // 3. Función de carga automática desde Supabase
+  // 3. FUNCIÓN DE CARGA AVANZADA CON FILTRO DE EXCLUSIÓN CRÍTICO
   const fetchBasesOnline = async () => {
     setLoadingBases(true);
     try {
-      const { data, error } = await supabase
+      // A. Traemos las materias primas ingresadas (Filtrando que vengan conformes de QA si aplica)
+      const { data: todasLasBases, error: errBases } = await supabase
         .from('bases')
-        .select('codigo, proveedor')
+        .select('codigo, proveedor, qa')
         .order('codigo', { ascending: false });
+
+      if (errBases) throw errBases;
+
+      // B. Consultamos qué bases YA fueron ocupadas en alguna fabricación previa
+      const { data: basesOcupadas, error: errFab } = await supabase
+        .from('fabricaciones')
+        .select('base_salina_id');
+
+      if (errFab) throw errFab;
+
+      // Creamos el Set de códigos quemados
+      const setOcupadas = new Set(basesOcupadas?.map(f => f.base_salina_id) || []);
+
+      // C. 👉 FILTRO DE EXCLUSIÓN: Dejamos solo las bases que NO se han usado nunca
+      // Adicionalmente filtramos para que solo muestre las que NO estén marcadas como rechazadas (NO)
+      const basesDisponibles = todasLasBases?.filter(b => 
+        !setOcupadas.has(b.codigo) && b.qa !== 'NO' && b.qa !== 'RECHAZADO'
+      ) || [];
       
-      if (error) throw error;
-      if (data) setBasesOnline(data);
+      setBasesOnline(basesDisponibles);
     } catch (err: any) {
-      console.error("Error al cargar bases:", err.message);
+      console.error("Error al filtrar bases de datos:", err.message);
     } finally {
       setLoadingBases(false);
     }
@@ -98,10 +116,13 @@ export const FabricacionForm = () => {
       setFormData({
         categoria_id: '', producto: '', cantidad_frascos: '',
         base_id: '', ingrediente_activo: '', temperatura: '',
-        responsable_id: '', qa: 'OK', observaciones: ''
+        responsable_id: formData.responsable_id, // Dejamos el responsable para comodidad
+        qa: 'CONFORME', observaciones: ''
       });
       setLoteGenerado('');
-      fetchBasesOnline();
+      
+      // 👉 ACTUALIZACIÓN EN VIVO: Consumimos de inmediato la base ocupada para que desaparezca
+      await fetchBasesOnline();
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
@@ -112,10 +133,9 @@ export const FabricacionForm = () => {
 
   return (
     <div className="w-full">
-      {/* TARJETA BLANCA CON BORDES REDONDEADOS SEGÚN LA IMAGEN REFERENCIAL */}
       <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* CABECERA DE LA TARJETA (Título oscuro + Badge del lote a la derecha) */}
+        {/* CABECERA */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
@@ -139,7 +159,7 @@ export const FabricacionForm = () => {
           )}
         </div>
 
-        {/* FEEDBACK DE ACCIÓN */}
+        {/* FEEDBACK */}
         {mensaje.texto && (
           <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
             mensaje.tipo === 'success' 
@@ -150,7 +170,7 @@ export const FabricacionForm = () => {
           </div>
         )}
 
-        {/* CONTENEDORES DE INPUTS EN FONDO CLARO CON ENFOQUE CIAN */}
+        {/* CAMPOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* CATEGORÍA */}
@@ -189,7 +209,7 @@ export const FabricacionForm = () => {
             />
           </div>
 
-          {/* BASE DE ORIGEN */}
+          {/* BASE DE ORIGEN (Filtro de exclusión activo) */}
           <div className="flex flex-col space-y-1.5">
             <label className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
               <span>Base de Origen *</span>
@@ -202,7 +222,9 @@ export const FabricacionForm = () => {
                 onChange={(e) => setFormData({...formData, base_id: e.target.value})}
                 value={formData.base_id}
               >
-                <option value="" className="text-slate-400">{loadingBases ? 'Cargando bases...' : 'Seleccione Base...'}</option>
+                <option value="" className="text-slate-400">
+                  {loadingBases ? 'Cargando materias primas...' : basesOnline.length === 0 ? 'No hay materias bases conformes disponibles' : 'Seleccione Base...'}
+                </option>
                 {basesOnline.map(b => (
                   <option key={b.codigo} value={b.codigo} className="text-slate-800 font-mono">
                     {b.codigo} ({b.proveedor || 'Sin Proveedor'})
@@ -270,7 +292,7 @@ export const FabricacionForm = () => {
             </select>
           </div>
 
-          {/* ESTADO QA */}
+          {/* ESTADO QA (INCIDENCIA ADAPTADA: conforme / rechazado) */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado QA *</label>
             <select 
@@ -278,8 +300,8 @@ export const FabricacionForm = () => {
               onChange={(e) => setFormData({...formData, qa: e.target.value})}
               value={formData.qa}
             >
-              <option value="OK" className="text-green-600 font-bold">✅ OK (Aprobado)</option>
-              <option value="NO" className="text-red-600 font-bold">❌ NO (Rechazado)</option>
+              <option value="CONFORME" className="text-green-600 font-bold">conforme</option>
+              <option value="RECHAZADO" className="text-red-600 font-bold">rechazado</option>
             </select>
           </div>
 
@@ -296,7 +318,7 @@ export const FabricacionForm = () => {
           </div>
         </div>
 
-        {/* BOTÓN CIAN ELECTRÓNICO */}
+        {/* BOTÓN SUBMIT */}
         <div className="pt-4 border-t border-slate-100">
           <button 
             type="submit"

@@ -19,23 +19,38 @@ export const EtiquetadoForm = () => {
     lote_id: '', 
     cantidad_etiquetada: '',
     vencimiento_etiqueta: '',
-    qa: 'CONFORME', // 👉 Adaptado al nuevo estándar
+    qa: 'CONFORME',
     responsable_id: '',
   });
 
-  // 3. FUNCIÓN PARA TRAER LOTES DESDE SUPABASE
+  // 3. FUNCIÓN OPTIMIZADA: FILTRA Y QUITA LOS LOTES YA ETIQUETADOS
   const fetchLotesOnline = async () => {
     setLoadingLotes(true);
     try {
-      const { data, error } = await supabase
+      // 1. Traemos todas las fabricaciones registradas
+      const { data: fabricaciones, error: errFab } = await supabase
         .from('fabricaciones')
         .select('codigo_lote, producto')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      if (data) setLotesOnline(data);
+      if (errFab) throw errFab;
+
+      // 2. Traemos la lista de los lotes que YA fueron etiquetados previamente
+      const { data: yaEtiquetados, error: errEtiq } = await supabase
+        .from('etiquetados')
+        .select('lote_id');
+
+      if (errEtiq) throw errEtiq;
+
+      // Creamos un Set con los IDs ya registrados para una búsqueda ultra rápida (O(1))
+      const setEtiquetados = new Set(yaEtiquetados?.map(e => e.lote_id) || []);
+
+      // 3. 👉 FILTRO DE EXCLUSIÓN: Dejamos solo las fabricaciones cuyo código NO esté en el Set
+      const lotesDisponibles = fabricaciones?.filter(f => !setEtiquetados.has(f.codigo_lote)) || [];
+
+      setLotesOnline(lotesDisponibles);
     } catch (err: any) {
-      console.error("Error cargando lotes para etiquetado:", err.message);
+      console.error("Error filtrando lotes para etiquetado:", err.message);
     } finally {
       setLoadingLotes(false);
     }
@@ -52,7 +67,6 @@ export const EtiquetadoForm = () => {
       return setMensaje({ tipo: 'error', texto: "Debe seleccionar un lote y un responsable." });
     }
 
-    //  ¡INCIDENCIA SOLUCIONADA! Ahora sí llama correctamente a la función de estado
     setLoading(true); 
     setMensaje({ tipo: '', texto: '' });
 
@@ -78,12 +92,18 @@ export const EtiquetadoForm = () => {
 
       setMensaje({ tipo: 'success', texto: `✅ Etiquetado del lote ${formData.lote_id} registrado con éxito.` });
       
-      // Preservamos el lote_id y el responsable_id para que no desaparezca de la pantalla
-      setFormData(prev => ({
-        ...prev,
+      // Limpiamos los datos del formulario tras la operación
+      setFormData({
+        lote_id: '', // Al limpiarse vuelve a pedir selección
         cantidad_etiquetada: '',
         vencimiento_etiqueta: '',
-      }));
+        qa: 'CONFORME',
+        responsable_id: formData.responsable_id // Dejamos el responsable para comodidad
+      });
+
+      // 👉 ACTUALIZACIÓN EN VIVO: Volvemos a consultar la lista para que el lote que acabamos 
+      // de guardar se elimine visualmente al instante sin forzar recarga de página.
+      await fetchLotesOnline();
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
@@ -136,7 +156,7 @@ export const EtiquetadoForm = () => {
                 value={formData.lote_id}
               >
                 <option value="" className="text-slate-400">
-                  {loadingLotes ? 'Cargando lotes...' : 'Seleccione lote...'}
+                  {loadingLotes ? 'Cargando lotes disponibles...' : lotesOnline.length === 0 ? 'No hay lotes pendientes de etiquetado' : 'Seleccione lote...'}
                 </option>
                 {lotesOnline.map(f => (
                   <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
@@ -191,7 +211,7 @@ export const EtiquetadoForm = () => {
             </div>
           </div>
 
-          {/* VALIDACIÓN QA (INCIDENCIA ADAPTADA: conforme / rechazado) */}
+          {/* VALIDACIÓN QA */}
           <div className="flex flex-col space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Validación QA *</label>
             <select 

@@ -22,18 +22,34 @@ export const AlmacenForm = () => {
     responsable_id: '',
   });
 
-  // 3. FUNCIÓN PARA TRAER LOTES DE FABRICACIÓN DESDE LA NUBE
+  // 3. FUNCIÓN REESTRUCTURADA: EXCLUYE LOTES QUE YA ESTÁN EN BODEGA
   const fetchLotesOnline = async () => {
     setLoadingLotes(true);
     try {
-      const { data, error } = await supabase
+      // 1. Traemos todas las fabricaciones registradas
+      const { data: fabricaciones, error: errFab } = await supabase
         .from('fabricaciones')
         .select('codigo_lote, producto')
         .order('created_at', { ascending: false }); 
 
-      if (error) throw error;
-      if (data) setLotesOnline(data);
+      if (errFab) throw errFab;
+
+      // 2. Traemos los lotes que YA se guardaron en la bodega
+      const { data: yaAlmacenados, error: errAlm } = await supabase
+        .from('almacenamientos')
+        .select('lote_id');
+
+      if (errAlm) throw errAlm;
+
+      // Armamos un set rápido con los que ya existen en el almacén
+      const setAlmacenados = new Set(yaAlmacenados?.map(a => a.lote_id) || []);
+
+      // 3. 👉 FILTRO DE EXCLUSIÓN: Dejamos solo los que NO están en bodega aún
+      const lotesPendientes = fabricaciones?.filter(f => !setAlmacenados.has(f.codigo_lote)) || [];
+
+      setLotesOnline(lotesPendientes);
     } catch (err: any) {
+      console.error("Error filtrando lotes para almacén:", err.message);
     } finally {
       setLoadingLotes(false);
     }
@@ -74,13 +90,16 @@ export const AlmacenForm = () => {
 
       setMensaje({ tipo: 'success', texto: `✅ Lote ${formData.lote_id} almacenado correctamente.` });
       
-      // 👉 INCIDENCIA SOLUCIONADA: Mantenemos el lote_id y el responsable_id seleccionados 
-      // para que el código no desaparezca de golpe y el usuario vea qué guardó.
-      setFormData(prev => ({
-        ...prev,
+      // Reseteamos el formulario limpiando el lote_id para obligar una nueva selección
+      setFormData({
+        lote_id: '',
         ubicacion: '',
         temperatura_verificada: '',
-      }));
+        responsable_id: formData.responsable_id, // Dejamos el responsable seleccionado por comodidad
+      });
+
+      // 👉 ACTUALIZACIÓN EN VIVO: Removemos el lote guardado del selector de inmediato
+      await fetchLotesOnline();
 
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
@@ -91,10 +110,8 @@ export const AlmacenForm = () => {
 
   return (
     <div className="w-full">
-      {/* TARJETA BLANCA CON REDONDEADO SELECCIONADO */}
       <form onSubmit={handleSubmit} className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
         
-        {/* CABECERA MINIMALISTA */}
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-6">
           <div className="p-2 bg-cyan-50 rounded-xl">
             <Package className="text-cyan-500" size={20} />
@@ -109,7 +126,6 @@ export const AlmacenForm = () => {
           </div>
         </div>
 
-        {/* MENSAJES DE ESTADO */}
         {mensaje.texto && (
           <div className={`p-4 rounded-xl border text-xs font-bold animate-in fade-in duration-300 ${
             mensaje.tipo === 'success' 
@@ -120,7 +136,6 @@ export const AlmacenForm = () => {
           </div>
         )}
 
-        {/* GRID PRINCIPAL CON INPUTS CLAROS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* LOTE FABRICADO */}
@@ -136,16 +151,14 @@ export const AlmacenForm = () => {
                 onChange={(e) => setFormData({...formData, lote_id: e.target.value})}
                 value={formData.lote_id}
               >
-                <option value="" className="text-slate-400">{loadingLotes ? 'Cargando lotes...' : 'Seleccione el lote...'}</option>
-                {lotesOnline.length > 0 ? (
-                  lotesOnline.map(f => (
-                    <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
-                      {f.codigo_lote} - {f.producto}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No se encontraron lotes en la nube</option>
-                )}
+                <option value="" className="text-slate-400">
+                  {loadingLotes ? 'Cargando lotes disponibles...' : lotesOnline.length === 0 ? 'No hay lotes pendientes de almacenamiento' : 'Seleccione el lote...'}
+                </option>
+                {lotesOnline.map(f => (
+                  <option key={f.codigo_lote} value={f.codigo_lote} className="text-slate-800">
+                    {f.codigo_lote} - {f.producto}
+                  </option>
+                ))}
               </select>
               <button 
                 type="button" 
@@ -199,7 +212,6 @@ export const AlmacenForm = () => {
 
         </div>
 
-        {/* BOTÓN UNIFICADO EN CIAN */}
         <div className="pt-4 border-t border-slate-100">
           <button 
             type="submit"
