@@ -269,7 +269,7 @@ export const VentaForm = () => {
                 <Loader2 className="animate-spin" size={14} /> REGISTRANDO VENTA...
               </>
             ) : 'REGISTRAR VENTA EN LA NUBE'}
-          </button>y
+          </button>
         </div>
       </form>
     </div>
