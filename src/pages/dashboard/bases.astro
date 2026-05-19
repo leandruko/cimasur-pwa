@@ -1,0 +1,20 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { DashboardShell } from '../../components/DashboardShell';
+import { BaseForm } from '../../components/Bases/BaseForm';
+import { AuthProvider } from '../../components/AuthProvider';
+---
+
+<Layout title="Registro de Materia Prima">
+  <AuthProvider client:only="react">
+    <DashboardShell title="Bases de Origen" client:only="react">
+      
+      <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 ">
+        
+        <BaseForm client:only="react" />
+        
+      </div>
+      
+    </DashboardShell>
+  </AuthProvider>
+</Layout>

@@ -1,0 +1,16 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { DashboardShell } from '../../components/DashboardShell';
+import { GridActions } from '../../components/Dashboard/GridActions';
+import { AuthProvider } from '../../components/AuthProvider';
+
+---
+
+<Layout title="Panel de Trazabilidad">
+  <AuthProvider client:only="react">
+    <DashboardShell title="Centro de Operaciones Cimasur" client:only="react">
+      
+      <GridActions client:only="react" />
+    </DashboardShell>
+  </AuthProvider>
+</Layout>

@@ -1,0 +1,25 @@
+---
+import { SyncManager } from '../components/SyncManager';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} | Cimasur</title>
+  </head>
+  <body class="bg-[#f4f5f6] text-slate-50 min-h-screen">
+    
+    <SyncManager client:load />
+
+    <slot />
+  </body>
+</html>

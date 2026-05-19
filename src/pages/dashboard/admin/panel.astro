@@ -1,0 +1,76 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { AdminPanel } from '../../../components/Admin/AdminPanel';
+import { AdminGuard } from '../../../components/Admin/AdminGuard';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
+---
+
+<Layout title="Panel de Control | CIMASUR">
+  <main class="min-h-screen bg-[#f4f5f6] text-white selection:bg-blue-500/30 overflow-x-hidden">
+    
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+      <div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
+    </div>
+
+    <div class="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
+      
+      <AdminGuard client:only="react">
+        
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-blue-500 font-black text-[10px] uppercase tracking-[0.3em]">
+              <ShieldCheck size={14} />
+              Acceso Nivel Administrador
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black tracking-tighter italic uppercase">
+              Admin <span class="text-blue-600">Panel</span>
+            </h1>
+            <p class="text-slate-500 text-sm font-medium max-w-md">
+              Gestión de infraestructura, catálogos de base y control de personal autorizado.
+            </p>
+          </div>
+
+          <div>
+            <a 
+              href="/dashboard" 
+              class="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-6 py-3 rounded-2xl transition-all active:scale-95 shadow-xl"
+            >
+              <ArrowLeft size={18} className="text-slate-400 group-hover:-translate-x-1 transition-transform" />
+              <span class="font-bold text-sm">VOLVER AL INICIO</span>
+            </a>
+          </div>
+        </header>
+
+        <section class="animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
+          <AdminPanel client:only="react" />
+        </section>
+
+        <footer class="mt-20 pt-8 border-t border-slate-900 flex justify-center">
+          <div class="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+            <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+            Consola de Seguridad Sincronizada
+          </div>
+        </footer>
+
+      </AdminGuard>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  /* Scrollbar moderna */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #050505;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+</style>
